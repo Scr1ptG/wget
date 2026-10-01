@@ -1,0 +1,1428 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Введение в парсинг данных</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --ink:#111a24; --deep:#0c141c; --surface:#182432; --surface2:#1f2e3f;
+  --line:#2b3d52; --line-soft:#223244;
+  --text:#e7edf4; --dim:#9dafc2; --faint:#6b8099;
+  --amber:#e0913f; --amber-hi:#f4ac5c; --amber-dim:rgba(224,145,63,.14);
+  --teal:#54b6a4; --rose:#d4705f; --violet:#9a8ac9;
+  --serif:"IBM Plex Serif",Cambria,Georgia,serif;
+  --sans:"IBM Plex Sans","Segoe UI",Tahoma,sans-serif;
+  --mono:"IBM Plex Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--deep);color:var(--text);font-family:var(--sans);margin:0;min-height:100vh;overflow:hidden}
+#fit{position:fixed;width:1280px;height:720px;transform-origin:top left}
+#wrap{position:absolute;inset:0;background:var(--ink);overflow:hidden;box-shadow:0 0 0 1px var(--line-soft),0 30px 80px rgba(0,0,0,.55)}
+.slide{position:absolute;inset:0;padding:40px 60px 60px;display:none;flex-direction:column;gap:12px}
+.slide.on{display:flex;animation:in .32s ease both}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.slide.on .stagger > *{animation:rise .42s ease both}
+.slide.on .stagger > *:nth-child(2){animation-delay:.08s}
+.slide.on .stagger > *:nth-child(3){animation-delay:.16s}
+.slide.on .stagger > *:nth-child(4){animation-delay:.24s}
+.slide.on .stagger > *:nth-child(5){animation-delay:.32s}
+.slide.on .stagger > *:nth-child(6){animation-delay:.40s}
+@media (prefers-reduced-motion:reduce){.slide.on,.slide.on .stagger > *{animation:none!important}}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:14px;flex:none}
+.eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+h1{font-family:var(--serif);font-size:40px;line-height:1.08;margin:0;font-weight:600;text-wrap:balance;flex:none}
+h1.big{font-size:64px}
+.sub{font-size:16.5px;color:var(--dim);line-height:1.5;max-width:90ch;margin:0;flex:none}
+.foot{position:absolute;left:60px;right:60px;bottom:20px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase}
+.kicker{background:var(--amber-dim);border-left:3px solid var(--amber);padding:10px 16px;font-size:15.5px;line-height:1.45;color:#f0dcc4;flex:none}
+.kicker b{color:var(--amber-hi);font-weight:600}
+.kicker.teal{background:rgba(84,182,164,.12);border-left-color:var(--teal);color:#cfe8e2}.kicker.teal b{color:var(--teal)}
+.kicker.rose{background:rgba(212,112,95,.12);border-left-color:var(--rose);color:#efd2cc}.kicker.rose b{color:var(--rose)}
+.cols{display:grid;gap:14px;min-height:0}
+.grow{flex:1;min-height:0}
+.c2{grid-template-columns:1fr 1fr}.c2n{grid-template-columns:1fr 1.25fr}.c2w{grid-template-columns:1.25fr 1fr}.c3{grid-template-columns:repeat(3,1fr)}.c4{grid-template-columns:repeat(4,1fr)}
+.panel{background:var(--surface);border:1px solid var(--line-soft);padding:13px 16px;display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.panel h3{margin:0;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);flex:none}
+.panel h3.t{color:var(--teal)}.panel h3.v{color:var(--violet)}.panel h3.r{color:var(--rose)}
+.panel p{margin:0;font-size:14.5px;line-height:1.5;color:var(--dim)}
+.panel strong{color:var(--text);font-weight:600}
+ul.list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+ul.list li{font-size:14.5px;line-height:1.4;padding-left:22px;position:relative;color:var(--text)}
+ul.list li::before{content:"";position:absolute;left:4px;top:.55em;width:7px;height:7px;background:var(--amber);transform:rotate(45deg)}
+.small{font-size:13px;line-height:1.45}.dim{color:var(--dim)}
+pre{font-family:var(--mono);font-size:13px;line-height:1.5;margin:0;background:var(--deep);border:1px solid var(--line-soft);padding:9px 12px;overflow:auto;color:#dbe6f0;white-space:pre;flex:none}
+pre .k,.codex .k{color:var(--violet)}pre .s,.codex .s{color:var(--teal)}pre .c,.codex .c{color:var(--faint);font-style:italic}pre .n,.codex .n{color:var(--amber-hi)}
+code{font-family:var(--mono);font-size:.92em;color:var(--amber-hi)}
+button{font-family:var(--sans);cursor:pointer;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:14px;padding:7px 13px;transition:.15s}
+button:hover{border-color:var(--amber);color:var(--amber-hi)}
+button.on{border-color:var(--amber);background:var(--amber-dim);color:var(--amber-hi)}
+.rowbtn{display:flex;gap:9px;align-items:center;flex-wrap:wrap;flex:none}
+.verdict{font-family:var(--mono);font-size:13px;color:var(--dim);min-height:18px;flex:none;line-height:1.4}
+.verdict.good{color:var(--teal)}.verdict.bad{color:var(--rose)}
+input[type=range]{accent-color:var(--amber)}
+canvas{display:block;flex:none;max-width:100%;height:auto!important}
+.codex{font-family:var(--mono);font-size:13px;line-height:1.52;background:var(--deep);border:1px solid var(--line-soft);padding:7px 0;overflow:auto;min-height:0;color:#dbe6f0}
+.codex .cl{white-space:pre;padding:0 12px;border-left:3px solid transparent;min-height:1.52em}
+.codex .cl.has{cursor:pointer;border-left-color:var(--line)}
+.codex .cl.has:hover{background:rgba(255,255,255,.035)}
+.codex .cl.sel{background:var(--amber-dim);border-left-color:var(--amber)}
+.note{background:var(--surface2);border:1px solid var(--line);padding:10px 14px;font-size:15px;line-height:1.5;color:var(--text);min-height:74px;flex:none}
+.note code{font-size:.9em}
+.hint{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.08em;flex:none}
+.map{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.mblk{background:var(--surface);border:1px solid var(--line-soft);padding:13px;display:flex;flex-direction:column;gap:5px;transition:.3s;min-height:150px}
+.mblk .no{font-family:var(--mono);font-size:12px;color:var(--amber)}
+.mblk b{font-size:17px;font-weight:600}
+.mblk span{font-size:13.5px;color:var(--dim);line-height:1.4}
+.mblk .tp{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:auto}
+.mblk.on{border-color:var(--amber);background:var(--amber-dim);transform:translateY(-4px)}
+.pipe{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+.pbox{background:var(--deep);border:1px solid var(--line);padding:8px 12px;min-width:160px;text-align:center}
+.pbox small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase}
+.pbox b{display:block;font-family:var(--mono);font-size:26px;color:var(--amber-hi);font-weight:500}
+.pbox span{font-size:12px;color:var(--dim);font-family:var(--mono)}
+.parrow{font-family:var(--mono);font-size:12px;color:var(--dim);text-align:center;line-height:1.3}
+.exrow{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center}
+.exrow .who b{display:block;font-size:15px}.exrow .who span{font-size:12.5px;color:var(--dim)}
+.xbar{position:relative;height:25px;background:var(--deep);border:1px solid var(--line-soft);margin:3px 0}
+.xbar i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(84,182,164,.45);transition:width .9s}
+.xbar i.bad{background:rgba(212,112,95,.5)}
+.xbar em{position:absolute;left:8px;top:3px;font-size:12.5px;font-style:normal;color:var(--text)}
+.xbar span{position:absolute;right:8px;top:3px;font-family:var(--mono);font-size:12.5px}
+.cells{display:flex;gap:6px;flex:none}
+.cell{width:54px;height:46px;display:grid;place-items:center;font-family:var(--mono);font-size:14px;border:1px solid var(--line)}
+table.tt{border-collapse:collapse;font-family:var(--mono);font-size:12px}
+.tt td{width:36px;height:30px;text-align:center;border:1px solid var(--line-soft)}
+.tt th{font-weight:400;color:var(--faint);text-align:left;padding-right:8px;font-size:11px;white-space:nowrap}
+.readout{font-family:var(--mono);font-size:15px;color:var(--amber-hi)}
+</style>
+</head>
+<body>
+<div id="fit"><div id="wrap">
+
+
+<style>
+/* код со слайдов не выделяется и не копируется — пишем руками */
+#wrap{user-select:none}
+#wrap input,#wrap textarea{user-select:text}
+.out{font-family:var(--mono);font-size:12.5px;line-height:1.45;background:#0a1118;border:1px solid var(--line-soft);border-left:3px solid var(--teal);padding:9px 12px;color:#bcd3cb;white-space:pre;overflow:auto;flex:none}
+.out b{color:var(--teal);font-weight:500}.out i{color:var(--rose);font-style:normal}
+.pipbox{background:rgba(224,145,63,.1);border:1px solid var(--amber);border-left-width:4px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;flex:none}
+.pipbox .cmd{font-family:var(--mono);font-size:17px;color:var(--amber-hi)}
+.pipbox .what{font-size:13.5px;color:var(--dim);line-height:1.45}
+.pipbox .what b{color:var(--text);font-weight:600}
+.anat{font-family:var(--mono);font-size:16.5px;background:var(--deep);border:1px solid var(--line);padding:14px 16px;line-height:2.2;flex:none}
+.anat .tk{padding:3px 6px;border-bottom:2px dashed var(--line);cursor:pointer;transition:.15s}
+.anat .tk:hover{background:rgba(255,255,255,.06)}
+.anat .tk.on{background:var(--amber-dim);border-bottom-color:var(--amber);color:var(--amber-hi)}
+.anatnote{background:var(--surface2);border:1px solid var(--line);padding:11px 14px;font-size:15px;line-height:1.5;color:var(--text);flex:1;min-height:0}
+.anatnote b{color:var(--amber-hi)}
+.anatnote .lbl{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--teal);display:block;margin-bottom:4px}
+.step{background:var(--surface);border:1px solid var(--line-soft);border-left:3px solid var(--teal);padding:11px 14px;display:flex;flex-direction:column;gap:7px;min-height:0;min-width:0}
+.step .num{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--teal)}
+.step h4{margin:0;font-size:16.5px;color:var(--text);font-weight:600}
+.step p{margin:0;font-size:14.5px;color:var(--dim);line-height:1.45}
+.step .exp{font-family:var(--mono);font-size:12.5px;color:#bcd3cb;background:#0a1118;border:1px solid var(--line-soft);padding:6px 9px;white-space:pre;overflow:auto}
+.step .hint{display:none;font-size:13px;color:var(--faint);line-height:1.4;border-top:1px dashed var(--line);padding-top:6px}
+.step .hint.on{display:block}
+.cols > *{min-width:0}
+.warn{font-family:var(--mono);font-size:12px;color:var(--rose);letter-spacing:.06em}
+.qgrid{display:flex;flex-direction:column;gap:6px;min-height:0}
+.qrow{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-soft);padding:6px 10px}
+.qrow .txt{flex:1;font-family:var(--mono);font-size:13px;line-height:1.4;color:var(--text);min-width:0;white-space:pre-wrap}
+.qrow .why{display:none;font-family:var(--sans);font-size:12.5px;color:var(--faint);margin-top:3px;white-space:normal}.qrow .why.on{display:block}
+.qbtn{font-family:var(--mono);font-size:11.5px;padding:5px 8px;flex:none}
+.qbtn.on{border-color:var(--amber);background:var(--amber-dim);color:var(--amber-hi)}
+.qrow.ok{border-color:var(--teal)}.qrow.no{border-color:var(--rose)}
+.lines{font-family:var(--mono);font-size:13.5px;line-height:1.75;background:var(--deep);border:1px solid var(--line-soft);padding:10px 12px;color:#dbe6f0;white-space:pre;overflow:auto;min-height:0}
+.lines .ln{display:block;padding:0 6px;border-left:3px solid transparent}
+.lines .ln.on{background:var(--amber-dim);border-left-color:var(--amber)}
+</style>
+
+<!-- 01 -->
+<section class="slide" id="q1" data-sec="Начало">
+  <div class="eyebrow">Методы сбора и обработки данных</div>
+  <div class="cols grow" style="grid-template-columns:1fr 420px;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <h1 class="big">Введение<br>в парсинг данных</h1>
+      <div style="font-family:var(--serif);font-size:23px;line-height:1.4;color:var(--amber-hi)">Сегодня вы сами напишете парсер —<br>по одному шагу за раз</div>
+      <div class="sub">Каждая библиотека: сначала что и зачем ставим, потом разбор каждого аргумента, потом ваш шаг скрипта. К концу пары скрипт будет готов целиком.</div>
+      <div class="warn">ВАЖНО: код со слайдов не выделяется и не копируется. Набираем руками — так он запоминается.</div>
+    </div>
+    <canvas id="tiCv" width="410" height="330"></canvas>
+  </div>
+</section>
+
+<!-- 02 -->
+<section class="slide" id="q2" data-sec="Что и зачем">
+  <div class="eyebrow">Теория · 1 из 3 · коротко</div>
+  <h1>Парсинг: страница сайта → таблица</h1>
+  <div class="cols grow" style="grid-template-columns:1.35fr 1fr">
+    <div class="panel"><canvas id="pgCv" width="640" height="300"></canvas><div class="rowbtn"><button id="pgRun">Показать</button><span class="verdict" id="pgInfo"></span></div></div>
+    <div class="panel">
+      <p style="color:var(--text);font-size:16px"><strong>Парсинг</strong> — программа забирает страницу, находит в ней нужные куски и складывает их в таблицу.</p>
+      <h3 class="t">Три шага, всегда одни и те же</h3>
+      <ul class="list">
+        <li><strong>Забрать</strong> страницу — библиотека <code>requests</code></li>
+        <li><strong>Разобрать</strong> её — библиотека <code>BeautifulSoup</code></li>
+        <li><strong>Сохранить</strong> в файл — библиотека <code>pandas</code></li>
+      </ul>
+      <h3>Где пригодится</h3>
+      <p>Цены конкурентов, вакансии, отзывы для обучения модели, статистика, свой Telegram-бот с данными.</p>
+      <div class="kicker">Человек копирует 500 карточек за день. Скрипт — <b>за пару минут</b>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="slide" id="q3" data-sec="Правила">
+  <div class="eyebrow">Теория · 2 из 3 · коротко</div>
+  <h1>Что можно парсить</h1>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3 class="t">Четыре правила</h3>
+      <ul class="list">
+        <li>Берём только <strong>публичные</strong> данные: то, что видно без входа в аккаунт</li>
+        <li>Не собираем <strong>персональные данные</strong> людей</li>
+        <li>Не мучаем сайт: между запросами пауза <code>time.sleep(0.3)</code></li>
+        <li>Заглядываем в <code>сайт/robots.txt</code> — там сайт сам пишет, куда роботам нельзя</li>
+      </ul>
+      <pre style="font-size:13px">User-agent: *        <span class="c"># для всех роботов</span>
+Disallow: /admin/    <span class="c"># сюда нельзя</span>
+Allow: /catalogue/   <span class="c"># сюда можно</span>
+Crawl-delay: 2       <span class="c"># пауза 2 секунды</span></pre>
+      <p class="small dim">Мы работаем на сайтах, созданных специально для тренировки: quotes.toscrape.com, books.toscrape.com, httpbin.org.</p>
+    </div>
+    <div class="panel">
+      <h3>Проверьте себя · правила слева</h3>
+      <div class="qgrid grow" id="rq"></div>
+      <div class="rowbtn"><button id="rqCheck">Проверить</button><button id="rqReset">Сбросить</button><div class="verdict" id="rqV"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 -->
+<section class="slide" id="q4" data-sec="Как приходит страница">
+  <div class="eyebrow">Теория · 3 из 3 · коротко</div>
+  <h1>Сайт присылает обычный текст</h1>
+  <div class="cols grow" style="grid-template-columns:1.4fr 1fr">
+    <div class="panel"><canvas id="httpCv" width="660" height="320"></canvas><div class="rowbtn"><button id="httpRun">Отправить запрос</button><span class="verdict" id="httpInfo"></span></div></div>
+    <div class="panel">
+      <ul class="list">
+        <li>Наш скрипт отправляет <strong>запрос</strong> по адресу</li>
+        <li>Сервер присылает <strong>ответ</strong>: код состояния и тело</li>
+        <li>Тело — это <strong>HTML</strong>: текст с тегами. Браузер по нему рисует страницу, а мы будем искать в нём данные</li>
+      </ul>
+      <div class="kicker teal">Запомнить одно: <b>страница — это строка</b>. Всё остальное сегодня — как удобно искать в этой строке.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="slide" id="q5" data-sec="pip requests">
+  <div class="eyebrow">Библиотека 1 · установка</div>
+  <h1>Ставим requests</h1>
+  <div class="pipbox">
+    <span class="cmd">pip install requests</span>
+    <span class="what"><b>pip</b> — программа-установщик пакетов Python. <b>install</b> — команда «скачай и поставь». <b>requests</b> — имя пакета на сайте pypi.org, откуда pip его и скачивает.</span>
+  </div>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3>Что именно происходит</h3>
+      <ul class="list">
+        <li>pip идёт на <strong>pypi.org</strong>, скачивает архив пакета и кладёт его в папку Python</li>
+        <li>После этого в любом файле можно написать <code>import requests</code></li>
+        <li>Ставим <strong>один раз</strong> на компьютер, а не при каждом запуске скрипта</li>
+        <li>В Colab и Jupyter то же самое пишут с восклицательным знаком: <code>!pip install requests</code></li>
+      </ul>
+      <div class="out">Successfully installed requests-2.32.3
+<span class="c"># проверяем, что встало:</span>
+import requests
+print(requests.__version__)
+<b>2.32.3</b></div>
+    </div>
+    <div class="panel">
+      <h3 class="t">Зачем нам этот пакет</h3>
+      <p style="color:var(--text);font-size:15.5px"><code>requests</code> умеет ровно то, что делает браузер, когда вы вводите адрес: <strong>сходить на сайт и принести ответ</strong>. Только без картинок и оформления — чистый текст.</p>
+      <h3 class="r" style="margin-top:6px">Частые ошибки установки</h3>
+      <ul class="list tight">
+        <li><code>pip install request</code> — без <strong>s</strong> на конце поставится совсем другой пакет</li>
+        <li><code>ModuleNotFoundError: No module named 'requests'</code> — пакет не поставлен или поставлен в другой Python</li>
+        <li>В Colab ставить обычно не нужно: <code>requests</code> уже есть</li>
+      </ul>
+      <div class="kicker">Правило: <b>pip install</b> — в терминале, <b>import</b> — в коде. Это разные вещи и делаются в разных местах.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 -->
+<section class="slide" id="q6" data-sec="requests.get">
+  <div class="eyebrow">Библиотека 1 · разбор вызова</div>
+  <h1>requests.get: что вписываем в каждый аргумент</h1>
+  <div class="sub">Нажимайте на подчёркнутые куски — расскажу про каждый.</div>
+  <div class="anat" id="getAnat"></div>
+  <div class="cols grow" style="grid-template-columns:1.1fr 1fr">
+    <div class="panel"><h3 class="t">Разбор</h3><div class="anatnote" id="getNote"></div></div>
+    <div class="panel">
+      <h3>Минимальный рабочий вызов</h3>
+      <pre style="font-size:13.5px">r = requests.get(<span class="s">"http://quotes.toscrape.com/"</span>)</pre>
+      <p>Так тоже работает. Но без <code>timeout</code> скрипт может зависнуть навсегда, а без <code>headers</code> часть сайтов ответит отказом. Поэтому пишем полную форму.</p>
+      <h3 class="v" style="margin-top:4px">Что такое r</h3>
+      <p><code>r</code> — это <strong>объект ответа</strong>. Внутри него лежит всё, что прислал сервер: код, заголовки и тело. Как коробка с посылкой — на следующем слайде её распакуем.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section class="slide" id="q7" data-sec="Ответ">
+  <div class="eyebrow">Библиотека 1 · что внутри ответа</div>
+  <h1>Распаковываем r</h1>
+  <div class="cols grow" style="grid-template-columns:1fr 1.1fr">
+    <div class="panel">
+      <h3>Нажмите на свойство</h3>
+      <div class="rowbtn" id="rBtns"></div>
+      <div class="out grow" id="rOut" style="min-height:150px"></div>
+    </div>
+    <div class="panel">
+      <h3 class="t">Объяснение</h3>
+      <div class="anatnote" id="rNote" style="flex:none;min-height:150px"></div>
+      <div class="kicker">Первым делом всегда печатайте <b>r.status_code</b> и <b>len(r.text)</b>. Если там 403 или 0 — разбирать нечего, проблема в запросе.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="slide" id="q8" data-sec="Шаг 1">
+  <div class="eyebrow">Практика · шаг 1 из 8 · пишем руками</div>
+  <h1>Шаг 1: заберите страницу</h1>
+  <div class="cols c3 grow" id="st1"></div>
+  <div class="rowbtn"><button data-hint="st1">Показать подсказки</button><span class="small dim">Ноутбук практики, блок «Шаг 1».</span></div>
+</section>
+
+<!-- 09 -->
+<section class="slide" id="q9" data-sec="Код ответа">
+  <div class="eyebrow">Усложняем шаг 1</div>
+  <h1>Проверка кода ответа</h1>
+  <div class="cols grow" style="grid-template-columns:1.15fr 1fr">
+    <div class="panel">
+      <h3>Разбор по строкам · нажимайте</h3>
+      <div class="lines" id="chkLines"></div>
+      <div class="anatnote" id="chkNote" style="flex:none;min-height:78px"></div>
+    </div>
+    <div class="panel">
+      <h3 class="t">Коды, которые встретятся</h3>
+      <ul class="list tight">
+        <li><strong>200</strong> — всё хорошо, страница пришла</li>
+        <li><strong>404</strong> — такой страницы нет: проверьте адрес</li>
+        <li><strong>403</strong> — сайт не пустил: чаще всего нужен <code>User-Agent</code></li>
+        <li><strong>429</strong> — слишком часто стучимся: увеличить паузу</li>
+        <li><strong>500 и выше</strong> — сломался сервер: подождать и повторить</li>
+      </ul>
+      <div class="out">https://httpbin.org/status/404 -&gt; <b>404</b> | ok: False
+https://httpbin.org/status/403 -&gt; <b>403</b> | ok: False</div>
+      <p class="small dim">httpbin.org умеет отдавать любой код по запросу — на нём и потренируемся.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" id="q10" data-sec="Шаг 2">
+  <div class="eyebrow">Практика · шаг 2 из 8 · пишем руками</div>
+  <h1>Шаг 2: добавьте проверку в свой скрипт</h1>
+  <div class="cols c3 grow" id="st2"></div>
+  <div class="rowbtn"><button data-hint="st2">Показать подсказки</button><span class="small dim">Дописываем тот же файл, что и на шаге 1.</span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" id="q11" data-sec="Заголовки">
+  <div class="eyebrow">Библиотека 1 · headers и timeout</div>
+  <h1>Как представиться сайту и не зависнуть</h1>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3>headers — визитка запроса</h3>
+      <pre style="font-size:13px">headers = {
+    <span class="s">"User-Agent"</span>: <span class="s">"IThub-student-bot/1.0"</span>
+}</pre>
+      <ul class="list tight">
+        <li><strong>Словарь</strong>: слева название заголовка, справа значение</li>
+        <li><code>User-Agent</code> — «кто я». Браузер пишет сюда своё название, а <code>requests</code> по умолчанию — <code>python-requests/2.32.3</code>, и часть сайтов на это отвечает <strong>403</strong></li>
+        <li>Только <strong>латиница</strong>: русские буквы в заголовке уронят запрос с <code>UnicodeEncodeError</code></li>
+      </ul>
+      <div class="out">наш User-Agent дошёл до сервера:
+IThub-student-bot/1.0 (educational project)</div>
+    </div>
+    <div class="panel">
+      <h3 class="t">timeout — сколько ждать</h3>
+      <pre style="font-size:13px">r = requests.get(url, headers=headers, timeout=<span class="n">10</span>)</pre>
+      <ul class="list tight">
+        <li>Число в <strong>секундах</strong>. Не ответили за 10 — скрипт бросит ошибку, а не будет ждать вечно</li>
+        <li>Без <code>timeout</code> зависший сайт остановит весь парсер</li>
+      </ul>
+      <h3 class="r" style="margin-top:4px">Ошибка сети — это исключение</h3>
+      <pre style="font-size:13px"><span class="k">try</span>:
+    r = requests.get(url, headers=headers, timeout=<span class="n">10</span>)
+<span class="k">except</span> requests.RequestException <span class="k">as</span> e:
+    print(<span class="s">"сеть подвела:"</span>, e)</pre>
+      <p><code>RequestException</code> — общий «родитель» всех ошибок библиотеки: нет интернета, не найден домен, вышел таймаут.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" id="q12" data-sec="Шаг 3">
+  <div class="eyebrow">Практика · шаг 3 из 8 · пишем руками</div>
+  <h1>Шаг 3: соберите функцию get_html</h1>
+  <div class="cols c3 grow" id="st3"></div>
+  <div class="rowbtn"><button data-hint="st3">Показать подсказки</button><span class="small dim">После этого шага первая часть парсера готова.</span></div>
+</section>
+
+<style>
+.seltest{font-family:var(--mono);font-size:13px;background:var(--deep);border:1px solid var(--line);color:var(--amber-hi);padding:7px 10px;width:100%}
+.htmlbox{font-family:var(--mono);font-size:11.5px;line-height:1.42;background:var(--deep);border:1px solid var(--line-soft);padding:10px 12px;color:#dbe6f0;white-space:pre;overflow:auto;min-height:0}
+.htmlbox .hit{background:rgba(224,145,63,.3);outline:1px solid var(--amber)}
+.stab{display:grid;grid-template-columns:96px 1fr;gap:4px 12px;font-size:13.5px;align-items:baseline}
+.stab dt{font-family:var(--mono);color:var(--amber-hi)}
+.stab dd{margin:0;color:var(--dim);line-height:1.4}
+.vars{font-family:var(--mono);font-size:13px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px}
+.vars dt{color:var(--teal)}
+.vars dd{margin:0;color:var(--text)}
+</style>
+
+<!-- 13 -->
+<section class="slide" id="q13" data-sec="pip bs4">
+  <div class="eyebrow">Библиотека 2 · установка</div>
+  <h1>Ставим BeautifulSoup</h1>
+  <div class="pipbox">
+    <span class="cmd">pip install beautifulsoup4 lxml</span>
+    <span class="what">Две библиотеки сразу. <b>beautifulsoup4</b> — сама библиотека разбора HTML (цифра 4 — версия, так называется пакет). <b>lxml</b> — быстрый движок, который читает HTML и строит из него дерево; BeautifulSoup пользуется им как мотором.</span>
+  </div>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3 class="r">Имя пакета и имя для импорта разные</h3>
+      <pre style="font-size:14px"><span class="c"># ставим так:</span>
+pip install beautifulsoup4
+
+<span class="c"># а импортируем так:</span>
+<span class="k">from</span> bs4 <span class="k">import</span> BeautifulSoup</pre>
+      <ul class="list tight">
+        <li><code>bs4</code> — имя модуля внутри пакета</li>
+        <li><code>BeautifulSoup</code> — класс, который мы вызываем</li>
+        <li><code>pip install bs4</code> — так делать не надо: это пакет-обёртка, в реальных проектах ставят <code>beautifulsoup4</code></li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="t">Зачем нужен lxml</h3>
+      <p style="color:var(--text);font-size:15px">HTML на настоящих сайтах часто сломан: незакрытые теги, лишние пробелы. Движок разбора это терпит и всё равно строит дерево.</p>
+      <ul class="list tight">
+        <li><code>"lxml"</code> — быстрый, ставится отдельно</li>
+        <li><code>"html.parser"</code> — встроен в Python, ставить нечего, но медленнее</li>
+      </ul>
+      <div class="out">Successfully installed beautifulsoup4-4.12.3 lxml-5.2.2
+<span class="c"># проверяем:</span>
+from bs4 import BeautifulSoup
+print(BeautifulSoup(<span class="s">"&lt;b&gt;привет&lt;/b&gt;"</span>, <span class="s">"lxml"</span>).text)
+<b>привет</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" id="q14" data-sec="Что делает BS4">
+  <div class="eyebrow">Библиотека 2 · что она вообще делает</div>
+  <h1>Из длинной строки — в дерево, по которому можно ходить</h1>
+  <div class="cols grow" style="grid-template-columns:1.5fr 1fr">
+    <div class="panel"><canvas id="bsCv" width="700" height="340"></canvas><div class="rowbtn"><button id="bsRun">Показать превращение</button><span class="verdict" id="bsInfo"></span></div></div>
+    <div class="panel">
+      <p style="color:var(--text);font-size:15.5px">Слева — то, что прислал сервер: одна длинная строка. Искать в ней данные вручную больно.</p>
+      <ul class="list">
+        <li>BeautifulSoup читает строку и строит <strong>дерево тегов</strong></li>
+        <li>Каждый тег становится объектом: у него есть имя, атрибуты, текст и соседи</li>
+        <li>Теперь можно просто <strong>спросить</strong>: «дай первый тег с классом quote»</li>
+      </ul>
+      <pre style="font-size:13.5px">soup = BeautifulSoup(html, <span class="s">"lxml"</span>)
+print(soup.title.text)</pre>
+      <div class="kicker teal">Вся библиотека — про одно: <b>из текста сделать дерево</b> и удобно по нему искать.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" id="q15" data-sec="Шаг 4">
+  <div class="eyebrow">Практика · шаг 4 из 8 · самое простое задание</div>
+  <h1>Шаг 4: постройте дерево и спросите у него заголовок</h1>
+  <div class="cols c3 grow" id="st4"></div>
+  <div class="rowbtn"><button data-hint="st4">Показать подсказки</button><span class="small dim">Одна строка кода на задание. Дальше будет сложнее.</span></div>
+</section>
+
+<!-- 16 -->
+<section class="slide" id="q16" data-sec="find">
+  <div class="eyebrow">Библиотека 2 · разбор вызова</div>
+  <h1>find и find_all: что вписываем</h1>
+  <div class="sub">Нажимайте на подчёркнутые куски.</div>
+  <div class="anat" id="findAnat"></div>
+  <div class="cols grow" style="grid-template-columns:1.1fr 1fr">
+    <div class="panel"><h3 class="t">Разбор</h3><div class="anatnote" id="findNote"></div></div>
+    <div class="panel">
+      <h3>Чем find отличается от find_all</h3>
+      <div class="out">first = soup.find(<span class="s">"div"</span>, class_=<span class="s">"quote"</span>)
+print(type(first))
+<b>&lt;class 'bs4.element.Tag'&gt;</b>   # один тег
+
+all_q = soup.find_all(<span class="s">"div"</span>, class_=<span class="s">"quote"</span>)
+print(type(all_q), len(all_q))
+<b>&lt;class 'bs4.element.ResultSet'&gt; 10</b>   # список</div>
+      <div class="kicker rose">Если ничего не нашлось: <code>find</code> вернёт <b>None</b>, а <code>find_all</code> — <b>пустой список</b>. Обращение <code>None.text</code> уронит скрипт с AttributeError.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide" id="q17" data-sec="text и get">
+  <div class="eyebrow">Библиотека 2 · как достать значение</div>
+  <h1>.text берёт текст, .get берёт атрибут</h1>
+  <div class="cols grow" style="grid-template-columns:1.25fr 1fr">
+    <div class="panel"><h3>Нажмите на тег в дереве</h3><canvas id="tagCv" width="600" height="300"></canvas></div>
+    <div class="panel">
+      <h3 class="t">Что вернётся</h3>
+      <div class="out grow" id="tagOut" style="min-height:120px"></div>
+      <ul class="list tight">
+        <li><code>.text</code> — весь текст внутри тега, включая вложенные</li>
+        <li><code>.get("href")</code> — значение атрибута; если атрибута нет, вернётся <code>None</code></li>
+        <li><code>tag["href"]</code> — то же самое, но упадёт с ошибкой, если атрибута нет</li>
+        <li><code>.strip()</code> — убрать лишние пробелы и переносы по краям текста</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide" id="q18" data-sec="Шаг 5">
+  <div class="eyebrow">Практика · шаг 5 из 8 · пишем руками</div>
+  <h1>Шаг 5: достаньте цитату, автора и теги</h1>
+  <div class="cols c3 grow" id="st5"></div>
+  <div class="rowbtn"><button data-hint="st5">Показать подсказки</button><span class="small dim">Дописываем тот же скрипт.</span></div>
+</section>
+
+<!-- 19 -->
+<section class="slide" id="q19" data-sec="Селекторы">
+  <div class="eyebrow">Библиотека 2 · короткая запись</div>
+  <h1>CSS-селекторы: тренажёр</h1>
+  <div class="cols grow" style="grid-template-columns:1fr 1.05fr">
+    <div class="panel">
+      <h3>Впишите селектор — подсвечу совпадения</h3>
+      <input class="seltest" id="selIn" value=".quote .text">
+      <div class="verdict" id="selV"></div>
+      <div class="htmlbox grow" id="selBox"></div>
+      <div class="rowbtn" id="selEx"></div>
+    </div>
+    <div class="panel">
+      <dl class="stab">
+        <dt>div</dt><dd>все теги <code>div</code></dd>
+        <dt>.quote</dt><dd>всё с классом <code>quote</code></dd>
+        <dt>div.quote</dt><dd>только <code>div</code> с этим классом</dd>
+        <dt>.quote .text</dt><dd><code>.text</code> внутри <code>.quote</code> на любой глубине</dd>
+        <dt>div &gt; span</dt><dd><code>span</code> — прямой потомок <code>div</code></dd>
+        <dt>a[href]</dt><dd>ссылки, у которых есть атрибут</dd>
+        <dt>li.next a</dt><dd>ссылка внутри <code>li class="next"</code></dd>
+      </dl>
+      <pre style="font-size:13px">soup.select(<span class="s">".quote .text"</span>)      <span class="c"># список, как find_all</span>
+soup.select_one(<span class="s">".author"</span>)       <span class="c"># один, как find</span></pre>
+      <div class="kicker">Тот же селектор вы видите в DevTools: <b>F12 → Ctrl+Shift+C → клик по элементу</b>. Смотрите на класс тега и его родителя.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" id="q20" data-sec="Шаг 6">
+  <div class="eyebrow">Практика · шаг 6 из 8 · пишем руками</div>
+  <h1>Шаг 6: соберите все 10 цитат страницы</h1>
+  <div class="cols c3 grow" id="st6"></div>
+  <div class="rowbtn"><button data-hint="st6">Показать подсказки</button><span class="small dim">Получится функция parse_page(html).</span></div>
+</section>
+
+<!-- 21 -->
+<section class="slide" id="q21" data-sec="Пагинация">
+  <div class="eyebrow">Много страниц · разбор цикла</div>
+  <h1>Как парсер сам переходит на следующую страницу</h1>
+  <div class="cols grow" style="grid-template-columns:1.15fr 1fr">
+    <div class="panel"><div class="lines grow" id="pgLines"></div>
+      <div class="rowbtn"><button id="pgStep">Следующая строка</button><button id="pgReset">Сначала</button></div></div>
+    <div class="panel">
+      <h3 class="t">Что происходит</h3>
+      <div class="anatnote" id="pgNote" style="flex:none;min-height:86px"></div>
+      <h3>Состояние переменных</h3>
+      <dl class="vars" id="pgVars"></dl>
+      <div class="kicker">Цикл остановится сам: на последней странице кнопки «Next» нет, <code>select_one</code> вернёт <b>None</b>, и <code>url</code> станет <b>None</b>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide" id="q22" data-sec="Шаг 7">
+  <div class="eyebrow">Практика · шаг 7 из 8 · пишем руками</div>
+  <h1>Шаг 7: обойдите все страницы сайта</h1>
+  <div class="cols c3 grow" id="st7"></div>
+  <div class="rowbtn"><button data-hint="st7">Показать подсказки</button><span class="small dim">Не забудьте паузу между запросами.</span></div>
+</section>
+
+<style>
+.chk{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.chk label{display:flex;align-items:flex-start;gap:9px;background:var(--surface);border:1px solid var(--line-soft);padding:8px 11px;font-size:13.5px;color:var(--text);line-height:1.4;cursor:pointer}
+.chk input{margin-top:2px;accent-color:var(--teal);width:17px;height:17px;flex:none}
+.full{font-family:var(--mono);font-size:10.5px;line-height:1.45;background:var(--deep);border:1px solid var(--line-soft);padding:10px 14px;color:#dbe6f0;white-space:pre;overflow:auto;min-height:0}
+.full .tag{color:var(--teal);font-family:inherit;font-size:inherit;letter-spacing:0;text-transform:none;border:0;padding:0}
+.full .mark{background:var(--amber-dim);border-left:3px solid var(--amber);display:block;padding-left:6px;margin-left:-9px}
+</style>
+
+<!-- 23 -->
+<section class="slide" id="q23" data-sec="pip pandas">
+  <div class="eyebrow">Библиотека 3 · установка</div>
+  <h1>Ставим pandas и сохраняем результат</h1>
+  <div class="pipbox">
+    <span class="cmd">pip install pandas openpyxl</span>
+    <span class="what"><b>pandas</b> — библиотека таблиц: умеет собрать список словарей в таблицу, посчитать статистику и записать файл. <b>openpyxl</b> нужен только для Excel: без него <code>to_excel</code> выдаст ошибку, а <code>to_csv</code> работает и так.</span>
+  </div>
+  <div class="cols grow" style="grid-template-columns:1.1fr 1fr">
+    <div class="panel">
+      <h3>Разбор вызова · нажимайте</h3>
+      <div class="anat" id="pdAnat" style="font-size:15px;line-height:2"></div>
+      <div class="anatnote" id="pdNote" style="flex:none;min-height:84px"></div>
+    </div>
+    <div class="panel">
+      <h3 class="t">Что получится</h3>
+      <div class="out">df = pd.DataFrame(quotes)
+print(df.shape)
+<b>(100, 3)</b>        # 100 строк, 3 колонки
+
+print(df.head(2))
+                        text           author            tags
+0  “The world as we crea...  Albert Einstein  [change, deep-...]
+1  “It is our choices, H...     J.K. Rowling  [abilities, cho...]</div>
+      <ul class="list tight">
+        <li><code>df.shape</code> — сколько строк и колонок получилось</li>
+        <li><code>df.head(2)</code> — первые две строки, чтобы глазами проверить</li>
+        <li><code>df["author"].value_counts()</code> — сразу маленькая аналитика</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide" id="q24" data-sec="Шаг 8">
+  <div class="eyebrow">Практика · шаг 8 из 8 · пишем руками</div>
+  <h1>Шаг 8: сохраните датасет и посчитайте статистику</h1>
+  <div class="cols c3 grow" id="st8"></div>
+  <div class="rowbtn"><button data-hint="st8">Показать подсказки</button><span class="small dim">После этого шага парсер готов целиком.</span></div>
+</section>
+
+<!-- 25 -->
+<section class="slide" id="q25" data-sec="Скрипт целиком">
+  <div class="eyebrow">Вы это написали сами</div>
+  <h1>Все восемь шагов вместе</h1>
+  <div class="cols grow" style="grid-template-columns:1fr 1fr 330px">
+    <div class="panel"><div class="full grow" id="fullCodeA"></div></div>
+    <div class="panel"><div class="full grow" id="fullCodeB"></div></div>
+    <div class="panel">
+      <h3 class="t">Подсветить шаг</h3>
+      <div class="rowbtn" id="fullBtns"></div>
+      <div class="anatnote" id="fullNote" style="flex:none;min-height:96px"></div>
+      <div class="kicker">Это законченный парсер: <b>забрал → проверил → разобрал → обошёл страницы → сохранил</b>. Дальше меняется только сайт и селекторы.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide" id="q26" data-sec="API">
+  <div class="eyebrow">Бонус · когда парсить не нужно</div>
+  <h1>Если сайт отдаёт JSON — забираем его напрямую</h1>
+  <div class="pipbox"><span class="cmd">ставить нечего</span><span class="what">JSON умеет сам <b>requests</b>: метод <code>r.json()</code> превращает ответ сервера в обычный словарь Python. Модуль <code>json</code> встроен в Python и отдельно не ставится.</span></div>
+  <div class="cols c2 grow">
+    <div class="panel"><pre style="font-size:13px">r = requests.get(<span class="s">"https://dummyjson.com/products?limit=3"</span>,
+                 timeout=<span class="n">10</span>)
+data = r.json()            <span class="c"># словарь, а не строка</span>
+
+print(list(data.keys()))   <span class="c"># какие ключи внутри</span>
+print(data[<span class="s">"total"</span>])       <span class="c"># сколько всего товаров</span>
+<span class="k">for</span> p <span class="k">in</span> data[<span class="s">"products"</span>]:
+    print(p[<span class="s">"title"</span>], p[<span class="s">"price"</span>])</pre>
+      <div class="out">ключи ответа: ['products', 'total', 'skip', 'limit']
+всего товаров: <b>194</b>
+Essence Mascara Lash Princess 9.99
+Eyeshadow Palette with Mirror 19.99
+Powder Canister 14.99</div>
+    </div>
+    <div class="panel">
+      <ul class="list">
+        <li>Данные приходят <strong>уже структурой</strong>: ни тегов, ни селекторов</li>
+        <li>Разметку сайта могут переделать за ночь — API меняют реже</li>
+        <li>Пагинация задаётся параметрами: <code>?limit=30&amp;skip=60</code></li>
+        <li>Из списка словарей сразу получается таблица: <code>pd.DataFrame(data["products"])</code></li>
+      </ul>
+      <h3 class="t">Как найти такой адрес</h3>
+      <p>F12 → вкладка <strong>Network</strong> → фильтр <strong>Fetch/XHR</strong> → обновить страницу. Если в ответе видно JSON с нужными данными — берите этот адрес.</p>
+      <div class="kicker">Порядок выбора всегда такой: <b>сначала API, потом HTML, и только в крайнем случае браузер</b> (Selenium, <code>pip install selenium</code>).</div>
+    </div>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide" id="q27" data-sec="Практика 9">
+  <div class="eyebrow">Практика · бонус · пишем руками</div>
+  <h1>Заберите данные из API</h1>
+  <div class="cols c3 grow" id="st9"></div>
+  <div class="rowbtn"><button data-hint="st9">Показать подсказки</button><span class="small dim">Сравните, насколько этот код короче парсинга HTML.</span></div>
+</section>
+
+<!-- 28 -->
+<section class="slide" id="q28" data-sec="Ошибки">
+  <div class="eyebrow">Что пойдёт не так</div>
+  <h1>Четыре ошибки, которые встретятся сегодня же</h1>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3 class="r">AttributeError: 'NoneType' has no attribute 'text'</h3>
+      <pre style="font-size:12.5px">price = card.select_one(<span class="s">".prise"</span>)   <span class="c"># опечатка в классе</span>
+print(price.text)                  <span class="c"># падает</span></pre>
+      <p><strong>Почему:</strong> селектор ничего не нашёл, вернулся <code>None</code>. <strong>Лечение:</strong> проверить класс в DevTools и добавить <code>if price is not None:</code>.</p>
+      <h3 class="r" style="margin-top:6px">Пустой список после find_all</h3>
+      <p><strong>Почему:</strong> либо неверный класс, либо данных нет в <code>r.text</code> — их дорисовал JavaScript. <strong>Проверка:</strong> Ctrl+U и поиск по нужному слову.</p>
+    </div>
+    <div class="panel">
+      <h3 class="r">Â£51.77 вместо £51.77</h3>
+      <pre style="font-size:12.5px">r.encoding = <span class="s">"utf-8"</span>      <span class="c"># и разбираем заново</span></pre>
+      <p><strong>Почему:</strong> сервер неверно указал кодировку ответа. Настоящий случай с books.toscrape.com.</p>
+      <h3 class="r" style="margin-top:6px">Ссылка вида /page/2/ не открывается</h3>
+      <pre style="font-size:12.5px"><span class="k">from</span> urllib.parse <span class="k">import</span> urljoin
+full = urljoin(<span class="s">"http://quotes.toscrape.com/"</span>, href)</pre>
+      <p><strong>Почему:</strong> на сайте ссылки относительные. <code>urljoin</code> приклеит их к адресу сайта.</p>
+      <div class="kicker">Пока подбираете селекторы — сохраните HTML в файл и работайте с ним. Сайт дёргать не нужно.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide" id="q29" data-sec="Домашнее задание">
+  <div class="eyebrow">Домашнее задание</div>
+  <h1>Свой парсер и мини-датасет</h1>
+  <div class="cols c2 grow">
+    <div class="panel">
+      <h3>Что сделать</h3>
+      <ul class="list">
+        <li>Взять <strong>books.toscrape.com</strong> (или согласовать другой сайт)</li>
+        <li>Собрать <strong>не меньше 100 записей</strong>, минимум 4 поля: название, цена, рейтинг, ссылка</li>
+        <li>Обойти страницы циклом с паузой</li>
+        <li>Сохранить <code>dataset.csv</code>, вывести число записей, среднюю цену и топ-5 по рейтингу</li>
+        <li>Разложить код по функциям: <code>get_html</code>, <code>parse_page</code>, <code>main</code></li>
+      </ul>
+      <h3 class="t" style="margin-top:4px">Сдать</h3>
+      <p>Ноутбук с рабочим парсером, файл <code>dataset.csv</code> и 3–5 предложений: что собирали, сколько запросов сделали, где споткнулись.</p>
+    </div>
+    <div class="panel">
+      <h3 class="t">Чеклист перед сдачей</h3>
+      <div class="chk">
+        <label><input type="checkbox"> Смотрел robots.txt</label>
+        <label><input type="checkbox"> Есть headers и timeout</label>
+        <label><input type="checkbox"> Есть time.sleep между запросами</label>
+        <label><input type="checkbox"> Проверяю status_code</label>
+        <label><input type="checkbox"> Проверяю None после select_one</label>
+        <label><input type="checkbox"> Ссылки через urljoin</label>
+        <label><input type="checkbox"> CSV в utf-8-sig</label>
+        <label><input type="checkbox"> Код в функциях</label>
+        <label><input type="checkbox"> Нет персональных данных</label>
+        <label><input type="checkbox"> Ноутбук перезапущен целиком</label>
+      </div>
+      <div class="verdict" id="ckV" style="font-size:15px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide" id="q30" data-sec="Проверка себя">
+  <div class="eyebrow">Проверка себя</div>
+  <h1>Восемь вопросов</h1>
+  <div class="qgrid grow" id="fq"></div>
+  <div class="rowbtn"><button id="fqCheck">Проверить</button><button id="fqReset">Сбросить</button><div class="verdict" id="fqV"></div></div>
+</section>
+
+<!-- 31 -->
+<section class="slide" id="q31" data-sec="Шпаргалка">
+  <div class="eyebrow">Итоги</div>
+  <h1>Шпаргалка: что ставим и зачем</h1>
+  <div class="cols c3 grow stagger">
+    <div class="panel"><h3>1 · Забрать</h3><div class="pipbox" style="padding:8px 11px"><span class="cmd" style="font-size:15px">pip install requests</span><span class="what">сходить на сайт и принести ответ</span></div><pre style="font-size:12.5px">r = requests.get(url,
+    headers=headers, timeout=<span class="n">10</span>)
+r.status_code   <span class="c"># код</span>
+r.text          <span class="c"># html</span></pre></div>
+    <div class="panel"><h3 class="t">2 · Разобрать</h3><div class="pipbox" style="padding:8px 11px"><span class="cmd" style="font-size:15px">pip install beautifulsoup4 lxml</span><span class="what">превратить html в дерево и искать по нему</span></div><pre style="font-size:12.5px">soup = BeautifulSoup(html, <span class="s">"lxml"</span>)
+soup.select(<span class="s">".quote"</span>)
+tag.text · tag.get(<span class="s">"href"</span>)</pre></div>
+    <div class="panel"><h3 class="v">3 · Сохранить</h3><div class="pipbox" style="padding:8px 11px"><span class="cmd" style="font-size:15px">pip install pandas openpyxl</span><span class="what">собрать таблицу и записать файл</span></div><pre style="font-size:12.5px">df = pd.DataFrame(rows)
+df.to_csv(<span class="s">"data.csv"</span>,
+    index=<span class="k">False</span>,
+    encoding=<span class="s">"utf-8-sig"</span>)</pre></div>
+    <div class="panel"><h3>Обойти страницы</h3><p>Цикл по ссылке «Next» или по <code>?page=</code>, между запросами <code>time.sleep(0.3)</code>.</p></div>
+    <div class="panel"><h3 class="t">Проверить источник</h3><p>Сначала API (<code>r.json()</code>), потом HTML, в крайнем случае браузер: <code>pip install selenium</code>.</p></div>
+    <div class="panel"><h3 class="r">Вести себя прилично</h3><p>robots.txt, паузы, честный User-Agent, только публичные данные.</p></div>
+  </div>
+</section>
+
+</div>
+<div id="bar" style="position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line-soft);z-index:7"><i style="display:block;height:100%;width:0;background:var(--amber);transition:width .3s"></i></div>
+<div id="nav" style="position:absolute;right:18px;bottom:12px;display:flex;gap:6px;z-index:8"><button id="prev" style="padding:3px 10px;font-family:var(--mono);font-size:12px" aria-label="Предыдущий слайд">←</button><button id="next" style="padding:3px 10px;font-family:var(--mono);font-size:12px" aria-label="Следующий слайд">→</button></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var fit = document.getElementById("fit");
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var barFill = document.querySelector("#bar i");
+  var cur = 0;
+  function resize() {
+    var k = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    if (!(k > 0)) k = 1;
+    fit.style.transform = "scale(" + k + ")";
+    fit.style.left = ((window.innerWidth - 1280 * k) / 2) + "px";
+    fit.style.top = ((window.innerHeight - 720 * k) / 2) + "px";
+  }
+  window.addEventListener("resize", resize); resize();
+  slides.forEach(function (s, i) {
+    var f = document.createElement("div"); f.className = "foot";
+    f.innerHTML = "<span>" + (s.dataset.sec || "") + "</span><span>" + String(i + 1).padStart(2, "0") + " / " + String(slides.length).padStart(2, "0") + "</span>";
+    s.appendChild(f);
+  });
+  function show(i) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function (s, j) { s.classList.toggle("on", j === cur); });
+    barFill.style.width = ((cur + 1) / slides.length * 100) + "%";
+    slides[cur].dispatchEvent(new CustomEvent("shown"));
+    try { history.replaceState(null, "", "#s" + (cur + 1)); } catch (e) {}
+  }
+  document.getElementById("prev").onclick = function () { show(cur - 1); };
+  document.getElementById("next").onclick = function () { show(cur + 1); };
+  document.addEventListener("keydown", function (e) {
+    var t = e.target && e.target.tagName;
+    if (t === "INPUT" || t === "TEXTAREA" || t === "SELECT") return;
+    if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") { show(cur + 1); e.preventDefault(); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { show(cur - 1); e.preventDefault(); }
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(slides.length - 1);
+    else if (e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+
+  /* ---------- помощники ---------- */
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function R(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function cv(id) { var c = $(id), w = c.width, h = c.height; c.style.width = w + "px"; c.style.height = h + "px"; c.width = w * 2; c.height = h * 2; var x = c.getContext("2d"); x.scale(2, 2); x.W = w; x.H = h; return x; }
+  function loop(slide, fn) {
+    var raf = null;
+    function tick(ts) { if (!slide.classList.contains("on")) { raf = null; return; } fn(ts); raf = requestAnimationFrame(tick); }
+    slide.addEventListener("shown", function () { if (!raf) raf = requestAnimationFrame(tick); });
+  }
+  function evPos(e, canvas) { var r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * parseFloat(canvas.style.width) / r.width, y: (e.clientY - r.top) * parseFloat(canvas.style.height) / r.height }; }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  var C = { amber: "#e0913f", amberHi: "#f4ac5c", teal: "#54b6a4", rose: "#d4705f", violet: "#9a8ac9", text: "#e7edf4", dim: "#9dafc2", faint: "#6b8099", line: "#2b3d52", soft: "#223244", surface: "#182432", deep: "#0c141c" };
+  function font(px, mono) { return px + "px " + (mono === false ? "'IBM Plex Sans', sans-serif" : "'IBM Plex Mono', monospace"); }
+  function hl(line) {
+    var out = "", re = /(#.*$)|(f?"[^"]*"|'[^']*')|\b(import|from|as|for|in|with|def|return|True|False|None|if|else|not|and|or)\b|\b(\d+\.?\d*)\b/g, last = 0, m;
+    while ((m = re.exec(line))) { out += esc(line.slice(last, m.index)); var cls = m[1] ? "c" : m[2] ? "s" : m[3] ? "k" : "n"; out += '<span class="' + cls + '">' + esc(m[0]) + "</span>"; last = re.lastIndex; }
+    return out + esc(line.slice(last));
+  }
+  function codex(id, lines, onSel) {
+    var box = $(id), note = $(id + "Note"), els = [];
+    lines.forEach(function (L, i) {
+      var d = document.createElement("div"); d.className = "cl" + (L[1] ? " has" : "");
+      d.innerHTML = L[0] ? hl(L[0]) : " ";
+      if (L[1]) d.onclick = function () { sel(i); };
+      box.appendChild(d); els.push(d);
+    });
+    function sel(i) { els.forEach(function (e, j) { e.classList.toggle("sel", j === i); }); note.innerHTML = lines[i][1]; if (onSel) onSel(lines[i][2]); }
+    for (var i = 0; i < lines.length; i++) if (lines[i][1]) { sel(i); break; }
+  }
+
+  /* цифры в стиле MNIST: рисуем шрифтом на 28×28 со случайным наклоном и размытием */
+  var FAM = ["sans-serif", "serif", "monospace", "Georgia", "Verdana", "Trebuchet MS", "Courier New", "cursive"];
+  var off = document.createElement("canvas"); off.width = off.height = 28;
+  var ox = off.getContext("2d", { willReadFrequently: true });
+  function digitImg(d, rnd) {
+    ox.setTransform(1, 0, 0, 1, 0, 0); ox.filter = "none"; ox.fillStyle = "#000"; ox.fillRect(0, 0, 28, 28);
+    ox.translate(14 + (rnd() - .5) * 3, 14.5 + (rnd() - .5) * 3);
+    ox.rotate((rnd() - .5) * 0.45);
+    var s = 0.85 + rnd() * 0.25; ox.scale(s * (0.8 + rnd() * 0.3), s);
+    ox.filter = "blur(0.55px)";
+    ox.font = (rnd() < .5 ? "bold " : "") + "21px " + FAM[Math.floor(rnd() * FAM.length)];
+    ox.textAlign = "center"; ox.textBaseline = "middle";
+    ox.fillStyle = "#fff"; ox.strokeStyle = "#fff"; ox.lineWidth = 1 + rnd() * 1.5; ox.lineJoin = "round";
+    ox.strokeText(String(d), 0, 1); ox.fillText(String(d), 0, 1);
+    var data = ox.getImageData(0, 0, 28, 28).data, px = new Array(784);
+    for (var i = 0; i < 784; i++) px[i] = data[i * 4];
+    return px;
+  }
+  var tmp = document.createElement("canvas"); tmp.width = tmp.height = 28; var tx = tmp.getContext("2d");
+  function drawDigit(ctx, px, x, y, size) {
+    var im = tx.createImageData(28, 28);
+    for (var i = 0; i < 784; i++) { var v = px[i]; im.data[i * 4] = v; im.data[i * 4 + 1] = v; im.data[i * 4 + 2] = v; im.data[i * 4 + 3] = 255; }
+    tx.putImageData(im, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(tmp, x, y, size, size);
+  }
+  var PART = { 0: 6, 1: 7, 2: 7, 3: 5, 4: 9, 5: 3, 6: 0, 7: 1, 8: 3, 9: 4 };
+  function argmax(a) { var b = 0; for (var i = 1; i < a.length; i++) if (a[i] > a[b]) b = i; return b; }
+  function makeLogits(d, rnd, wrong) {
+    var z = [], p = PART[d], k;
+    for (k = 0; k < 10; k++) z.push(-1.2 + (rnd() - .5) * 2.4);
+    if (wrong) { z[p] += 4.4 + rnd(); z[d] += 3 + rnd() * .8; } else { z[d] += 4.2 + rnd() * 1.5; z[p] += 1.4 + rnd() * 1.2; }
+    var want = wrong ? p : d, top = argmax(z);
+    if (top !== want) { var t = z[top]; z[top] = z[want]; z[want] = t; }
+    return z;
+  }
+  function softmax(z) { var m = Math.max.apply(null, z), e = z.map(function (v) { return Math.exp(v - m); }), s = e.reduce(function (a, b) { return a + b; }, 0); return e.map(function (v) { return v / s; }); }
+  function netLayout(W, H, counts, x0, x1, maxGap) {
+    return counts.map(function (n, l) {
+      var x = x0 + (x1 - x0) * l / (counts.length - 1), gap = Math.min(maxGap, (H - 40) / Math.max(1, n - 1)), y0 = H / 2 - gap * (n - 1) / 2, a = [];
+      for (var i = 0; i < n; i++) a.push({ x: x, y: y0 + gap * i });
+      return a;
+    });
+  }
+  function quiz(cfg) {
+    var box = $(cfg.box), out = $(cfg.verdict), rows = [];
+    cfg.items.forEach(function (it) {
+      var row = document.createElement("div"); row.className = "qrow";
+      var txt = document.createElement("div"); txt.className = "txt"; txt.innerHTML = esc(it.t) + "<i class='why'></i>"; row.appendChild(txt);
+      var btns = [];
+      it.o.forEach(function (opt, k) {
+        var b = document.createElement("button"); b.className = "qbtn"; b.textContent = opt;
+        b.onclick = function () { row.dataset.pick = String(k); btns.forEach(function (x) { x.classList.remove("on"); }); b.classList.add("on"); out.textContent = ""; out.className = "verdict"; };
+        btns.push(b); row.appendChild(b);
+      });
+      box.appendChild(row); rows.push({ row: row, it: it, btns: btns, why: txt.querySelector(".why") });
+    });
+    $(cfg.check).onclick = function () {
+      var empty = rows.filter(function (r) { return r.row.dataset.pick === undefined; }).length;
+      if (empty) { out.textContent = "Ответьте на все · осталось: " + empty; out.className = "verdict bad"; return; }
+      var ok = 0;
+      rows.forEach(function (r) { r.row.classList.remove("ok", "no"); if (Number(r.row.dataset.pick) === r.it.a) { r.row.classList.add("ok"); ok++; } else r.row.classList.add("no"); r.why.textContent = "Ответ: " + r.it.o[r.it.a] + " · " + r.it.w; r.why.classList.add("on"); });
+      out.textContent = "Верно " + ok + " из " + rows.length; out.className = "verdict " + (ok === rows.length ? "good" : "bad");
+    };
+    $(cfg.reset).onclick = function () { rows.forEach(function (r) { r.row.className = "qrow"; delete r.row.dataset.pick; r.btns.forEach(function (b) { b.classList.remove("on"); }); r.why.textContent = ""; r.why.classList.remove("on"); }); out.textContent = ""; out.className = "verdict"; };
+  }
+
+  
+  /* ================= помощники ================= */
+  function cap(ctx, t, x, y, col, size) { ctx.fillStyle = col || C.faint; ctx.font = font(size || 12); ctx.textAlign = "center"; ctx.fillText(t, x, y); }
+  function circle(ctx, x, y, r, fill, stroke) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); } }
+  function node(ctx, x, y, w, h, label, fill, stroke, col, size) {
+    ctx.fillStyle = fill || "#1f2e3f"; ctx.fillRect(x, y, w, h); ctx.strokeStyle = stroke || C.dim; ctx.strokeRect(x + .5, y + .5, w, h);
+    ctx.fillStyle = col || C.text; ctx.font = font(size || 12); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, x + w / 2, y + h / 2); ctx.textBaseline = "alphabetic";
+  }
+  function arrow(ctx, x1, y1, x2, y2, col) {
+    ctx.strokeStyle = col || C.line; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    var a = Math.atan2(y2 - y1, x2 - x1); ctx.fillStyle = col || C.line; ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - 9 * Math.cos(a - .4), y2 - 9 * Math.sin(a - .4)); ctx.lineTo(x2 - 9 * Math.cos(a + .4), y2 - 9 * Math.sin(a + .4)); ctx.fill(); ctx.lineWidth = 1;
+  }
+  /* разбор вызова: части [текст, пояснение|null] */
+  function anat(boxId, noteId, parts) {
+    var box = $(boxId), note = $(noteId), spans = [];
+    parts.forEach(function (p, i) {
+      var s = document.createElement("span");
+      s.textContent = p[0];
+      if (p[1]) { s.className = "tk"; s.onclick = function () { sel(i); }; }
+      box.appendChild(s); spans.push(s);
+    });
+    function sel(i) { spans.forEach(function (s, j) { s.classList.toggle("on", j === i); }); note.innerHTML = '<span class="lbl">' + esc(parts[i][0].replace(/[\s,]+/g, " ").replace(/^[\s,]+|[\s,]+$/g, "")) + "</span>" + parts[i][1]; }
+    for (var k = 0; k < parts.length; k++) if (parts[k][1]) { sel(k); break; }
+  }
+  /* построчный разбор: строки [текст, пояснение|null] */
+  function lines(boxId, noteId, rows, onStep) {
+    var box = $(boxId), note = $(noteId), els = [];
+    rows.forEach(function (r, i) {
+      var d = document.createElement("span"); d.className = "ln"; d.textContent = r[0] || " ";
+      if (r[1]) d.onclick = function () { sel(i); };
+      box.appendChild(d); els.push(d);
+    });
+    function sel(i) { els.forEach(function (e, j) { e.classList.toggle("on", j === i); }); if (note) note.innerHTML = rows[i][1] || ""; if (onStep) onStep(i); }
+    sel(0);
+    return { sel: sel, next: function () { var cur = els.findIndex(function (e) { return e.classList.contains("on"); }); var n = cur; do { n = (n + 1) % rows.length; } while (!rows[n][1] && n !== cur); sel(n); }, count: rows.length };
+  }
+  /* карточки-шаги практики */
+  function steps(id, list) {
+    var box = $(id);
+    list.forEach(function (t) {
+      var d = document.createElement("div"); d.className = "step";
+      d.innerHTML = '<span class="num">ЗАДАНИЕ ' + t[0] + '</span><h4>' + esc(t[1]) + "</h4><p>" + esc(t[2]) + '</p><div class="exp">' + esc(t[3]) + '</div><div class="hint">Подсказка: ' + esc(t[4]) + "</div>";
+      box.appendChild(d);
+    });
+  }
+  var STEPS = {
+    st1: [
+      ["1.1", "Библиотека на месте?", "Импортируйте requests и напечатайте его версию. Если вылетит ModuleNotFoundError — поставьте пакет командой pip install requests.", "2.32.3", "import requests, затем requests.__version__"],
+      ["1.2", "Первый запрос", "Заведите переменную url с адресом http://quotes.toscrape.com/ и сделайте запрос. Напечатайте тип полученного объекта и код ответа.", "<class 'requests.models.Response'>\n200", "r = requests.get(url), затем type(r) и r.status_code"],
+      ["1.3", "Сырой HTML", "Напечатайте длину r.text и первые 200 символов. В комментарии ответьте: встречается ли в них слово Einstein?", "11021\n<!DOCTYPE html> ...", "len(r.text) и срез r.text[:200]; проверить вхождение — оператор in"]
+    ],
+    st2: [
+      ["2.1", "Ветка успеха и ветка ошибки", "Допишите к своему коду проверку: если код ответа 200 — печатаем «страница получена», иначе печатаем «ошибка» и сам код.", "страница получена", "if r.status_code == 200: ... else: ..."],
+      ["2.2", "Проверьте, что ветка ошибки работает", "Сделайте такой же запрос к https://httpbin.org/status/404 и убедитесь, что сработала вторая ветка.", "ошибка, код: 404", "этот адрес всегда отвечает кодом 404"],
+      ["2.3", "raise_for_status", "Вызовите r.raise_for_status() для ответа с кодом 404 внутри try/except и напечатайте текст ошибки.", "404 Client Error: NOT FOUND for url: ...", "except requests.HTTPError as e: print(e)"]
+    ],
+    st3: [
+      ["3.1", "Представьтесь сайту", "Заведите словарь headers с User-Agent (только латиница) и передайте его в запрос к https://httpbin.org/get. Убедитесь по ответу, что заголовок дошёл.", "IThub-student-bot/1.0", "ответ читается r.json(), нужный ключ: r.json()['headers']['User-Agent']"],
+      ["3.2", "Ошибка сети", "Оберните запрос в try/except requests.RequestException и проверьте на адресе http://site-kotorogo-net-12345.ru — скрипт должен не упасть, а напечатать сообщение.", "ошибка сети: ConnectionError", "type(e).__name__ покажет название ошибки"],
+      ["3.3", "Функция get_html(url)", "Соберите всё в функцию: делает запрос с headers и timeout=10, при коде 200 возвращает r.text, иначе печатает код и возвращает None, ошибки сети ловит. Проверьте на трёх адресах: рабочем, /status/404 и несуществующем домене.", "11021\nплохой ответ: 404 → None\nошибка сети → None", "возвращать значение — return; функция без return отдаёт None сама"]
+    ],
+    st4: [
+      ["4.1", "Постройте дерево", "Получите HTML функцией get_html и передайте его в BeautifulSoup с парсером lxml. Напечатайте тип получившегося объекта.", "<class 'bs4.BeautifulSoup'>", "soup = BeautifulSoup(html, \"lxml\")"],
+      ["4.2", "Спросите заголовок", "Одной строкой напечатайте текст тега title.", "Quotes to Scrape", "у soup есть свойство .title, у тега — .text"],
+      ["4.3", "Первый заголовок h1", "Найдите тег h1 и напечатайте его текст без лишних пробелов по краям.", "Quotes to Scrape", "soup.find(\"h1\") и метод .strip() у строки"]
+    ],
+    st5: [
+      ["5.1", "Первая цитата", "Найдите первый div с классом quote и напечатайте текст цитаты и автора.", "“The world as we have created it...”\nAlbert Einstein", "внутри карточки: span с классом text и small с классом author"],
+      ["5.2", "Все авторы страницы", "Соберите список авторов всех карточек. Напечатайте список, его длину и число уникальных имён.", "10 авторов, уникальных: 9", "find_all вернёт список тегов; уникальные — set(...)"],
+      ["5.3", "Теги и ссылка", "Для первой карточки напечатайте список её тегов и адрес ссылки первого тега.", "['change', 'deep-thoughts', 'thinking', 'world']\n/tag/change/page/1/", "адрес лежит в атрибуте href, достаём .get(\"href\")"]
+    ],
+    st6: [
+      ["6.1", "Один словарь", "Соберите словарь по первой карточке с ключами text, author, tags.", "{'text': '“The world...', 'author': 'Albert Einstein', 'tags': [...]}", "ключи придумываем сами, значения достаём как на шаге 5"],
+      ["6.2", "Функция parse_page(html)", "Напишите функцию: принимает HTML, возвращает список словарей по всем карточкам страницы. Проверьте длину результата.", "10", "цикл for card in soup.select(\".quote\") и список"],
+      ["6.3", "Ссылка на следующую страницу", "Достаньте href кнопки Next. Проверьте, что вернётся на последней странице: http://quotes.toscrape.com/page/10/", "/page/2/\nNone", "select_one(\"li.next a\"); если элемента нет, вернётся None"]
+    ],
+    st7: [
+      ["7.1", "Две страницы", "Напишите цикл, который обойдёт первые две страницы: печатайте номер страницы и сколько цитат уже собрано. Между запросами пауза 0.3 секунды.", "страница 1 | собрано: 10\nстраница 2 | собрано: 20", "time.sleep(0.3); адрес следующей страницы берётся из кнопки Next"],
+      ["7.2", "Весь сайт", "Уберите ограничение и обойдите все страницы, пока есть кнопка Next.", "страница 10 | собрано: 100 | дальше: None", "условие цикла — while url:"],
+      ["7.3", "Правильная склейка адресов", "Перепишите склейку адреса через urljoin и убедитесь, что результат тот же.", "http://quotes.toscrape.com/page/2/", "from urllib.parse import urljoin"]
+    ],
+    st8: [
+      ["8.1", "Таблица", "Сделайте DataFrame из собранных цитат, напечатайте shape и первые две строки.", "(100, 3)", "pd.DataFrame(список словарей)"],
+      ["8.2", "Файл", "Сохраните таблицу в quotes.csv без лишнего столбца с индексом, в кодировке utf-8-sig. Прочитайте файл обратно и сверьте число строк.", "сохранено 100 строк, прочитано 100", "to_csv(..., index=False, encoding=\"utf-8-sig\") и pd.read_csv"],
+      ["8.3", "Статистика", "Выведите топ-5 авторов по числу цитат и топ-10 самых частых тегов.", "Albert Einstein 10 ...", "value_counts(); для колонки со списками пригодится explode()"]
+    ],
+    st9: [
+      ["9.1", "Ответ API", "Запросите https://dummyjson.com/products?limit=5 и напечатайте ключи ответа и общее число товаров.", "['products', 'total', 'skip', 'limit']\n194", "r.json() вернёт словарь; ключи — list(data.keys())"],
+      ["9.2", "Таблица из JSON", "Сделайте таблицу из списка товаров с колонками id, title, price, category.", "(5, 4)", "pd.DataFrame(data[\"products\"])[[...]]"],
+      ["9.3", "Все товары", "Соберите все товары, увеличивая skip на 30, пока не наберёте total. В комментарии сравните длину этого кода с парсингом HTML.", "собрано: 194", "параметры: params={\"limit\": 30, \"skip\": skip}"]
+    ]
+  };
+  (function () {
+    Object.keys(STEPS).forEach(function (id) { steps(id, STEPS[id]); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-hint]"), function (b) {
+      b.onclick = function () {
+        var hints = $(b.dataset.hint).querySelectorAll(".hint"), on = !hints[0].classList.contains("on");
+        Array.prototype.forEach.call(hints, function (h) { h.classList.toggle("on", on); });
+        b.textContent = on ? "Скрыть подсказки" : "Показать подсказки";
+      };
+    });
+  })();
+
+  /* ---------- 01 титул ---------- */
+  (function () {
+    var c = cv("tiCv"), t0 = null;
+    loop($("q1"), function (ts) {
+      if (t0 === null) t0 = ts; var t = ((ts - t0) / 2600) % 1;
+      c.clearRect(0, 0, 410, 330);
+      ["requests", "BeautifulSoup", "pandas"].forEach(function (name, i) {
+        var y = 40 + i * 92, on = Math.floor(t * 3) === i;
+        node(c, 40, y, 330, 60, "", on ? "rgba(224,145,63,.18)" : "#16202c", on ? C.amberHi : C.line);
+        c.fillStyle = on ? C.amberHi : C.dim; c.font = font(17); c.textAlign = "left"; c.fillText(name, 60, y + 27);
+        c.fillStyle = C.faint; c.font = font(12); c.fillText(["забрать страницу", "разобрать html", "сохранить таблицу"][i], 60, y + 47);
+        if (i < 2) arrow(c, 205, y + 60, 205, y + 92, on ? C.amberHi : "rgba(157,175,194,.3)");
+      });
+      cap(c, "шаг за шагом · пишем руками", 205, 320, C.faint, 12);
+    });
+  })();
+
+  /* ---------- 02 страница → таблица ---------- */
+  (function () {
+    var c = cv("pgCv"), start = null;
+    loop($("q2"), function (ts) {
+      var t = start === null ? -1 : (ts - start) / 1000;
+      c.clearRect(0, 0, 640, 300);
+      node(c, 20, 30, 200, 230, "", "#16202c", C.dim);
+      c.fillStyle = "#223244"; c.fillRect(20, 30, 200, 18);
+      cap(c, "страница сайта", 120, 282, C.faint, 12);
+      var rows = [["Цитата 1", "Эйнштейн"], ["Цитата 2", "Роулинг"], ["Цитата 3", "Монро"], ["Цитата 4", "Эйнштейн"]];
+      rows.forEach(function (row, i) {
+        var y = 62 + i * 48, taken = t > .8 + i * .45;
+        c.fillStyle = taken ? "rgba(224,145,63,.18)" : "#1b2531"; c.fillRect(32, y, 176, 38); c.strokeStyle = taken ? C.amber : C.line; c.strokeRect(32.5, y + .5, 176, 38);
+        c.fillStyle = C.text; c.font = font(12); c.textAlign = "left"; c.fillText(row[0], 42, y + 16); c.fillStyle = C.amberHi; c.fillText(row[1], 42, y + 31);
+        if (taken) {
+          c.fillStyle = "rgba(84,182,164,.18)"; c.fillRect(392, 74 + i * 34, 220, 30); c.strokeStyle = C.teal; c.strokeRect(392.5, 74.5 + i * 34, 220, 30);
+          c.fillStyle = C.text; c.font = font(12); c.textAlign = "left"; c.fillText(row[0], 402, 94 + i * 34); c.fillText(row[1], 520, 94 + i * 34);
+          var p = Math.min(1, (t - .8 - i * .45) * 1.8);
+          if (p < 1) circle(c, lerp(220, 388, p), lerp(y + 19, 90 + i * 34, p), 6, C.amberHi);
+        }
+      });
+      c.fillStyle = "rgba(157,175,194,.22)"; c.fillRect(392, 42, 220, 28); c.strokeStyle = C.dim; c.strokeRect(392.5, 42.5, 220, 28);
+      c.fillStyle = C.dim; c.font = font(12); c.textAlign = "left"; c.fillText("text", 402, 60); c.fillText("author", 520, 60);
+      cap(c, "quotes.csv", 502, 282, C.teal, 12);
+      cap(c, "скрипт", 300, 40, C.amberHi, 12);
+      if (t > 3) { $("pgInfo").textContent = "4 карточки → 4 строки. Так же он обработает и 4 000."; $("pgInfo").className = "verdict good"; }
+    });
+    $("pgRun").onclick = function () { start = performance.now(); $("pgInfo").textContent = "собираем…"; $("pgInfo").className = "verdict"; };
+  })();
+
+  /* ---------- 03 правила ---------- */
+  quiz({ box: "rq", verdict: "rqV", check: "rqCheck", reset: "rqReset", items: [
+    { t: "site.ru/catalogue/page-2.html", o: ["можно", "нельзя"], a: 0, w: "Allow: /catalogue/" },
+    { t: "site.ru/admin/login", o: ["можно", "нельзя"], a: 1, w: "Disallow: /admin/" },
+    { t: "Телефоны людей из объявлений", o: ["можно", "нельзя"], a: 1, w: "персональные данные не собираем" },
+    { t: "Данные из личного кабинета по чужому логину", o: ["можно", "нельзя"], a: 1, w: "это не публичные данные" },
+    { t: "Пауза при Crawl-delay: 2", o: ["2 секунды", "2 минуты"], a: 0, w: "Crawl-delay указывается в секундах" }
+  ]});
+
+  /* ---------- 04 запрос и ответ ---------- */
+  (function () {
+    var c = cv("httpCv"), start = null;
+    loop($("q4"), function (ts) {
+      var t = start === null ? -1 : (ts - start) / 1000;
+      c.clearRect(0, 0, 660, 320);
+      node(c, 20, 100, 150, 86, "", "#16202c", C.dim);
+      cap(c, "наш скрипт", 95, 92, C.faint, 12); cap(c, "requests.get(url)", 95, 147, C.text, 12);
+      node(c, 490, 100, 150, 86, "", "#16202c", C.dim);
+      cap(c, "сервер сайта", 565, 92, C.faint, 12); cap(c, "quotes.toscrape.com", 565, 147, C.text, 11);
+      c.strokeStyle = C.line; c.setLineDash([5, 5]); c.beginPath(); c.moveTo(175, 125); c.lineTo(485, 125); c.moveTo(485, 165); c.lineTo(175, 165); c.stroke(); c.setLineDash([]);
+      cap(c, "запрос: дай страницу", 330, 116, t >= 0 && t < 1.6 ? C.amberHi : C.faint, 12);
+      cap(c, "ответ: код + текст страницы", 330, 186, t > 1.6 ? C.teal : C.faint, 12);
+      if (t >= 0 && t < 1.6) circle(c, lerp(180, 480, Math.min(1, t / 1.2)), 125, 7, C.amberHi);
+      if (t > 1.6 && t < 3.2) circle(c, lerp(480, 180, Math.min(1, (t - 1.6) / 1.2)), 165, 7, C.teal);
+      if (t > 2.8) {
+        node(c, 150, 205, 360, 96, "", "#0a1118", C.teal);
+        c.fillStyle = C.teal; c.font = font(12.5); c.textAlign = "left"; c.fillText("200 OK", 164, 228);
+        c.fillStyle = "#bcd3cb"; c.fillText("<html><head><title>Quotes to Scrape</title>", 164, 252);
+        c.fillText("<div class=\"quote\"><span class=\"text\">“The world…", 164, 272);
+        cap(c, "это и есть r.text — обычная строка", 330, 294, C.faint, 11);
+        $("httpInfo").textContent = "код 200 — страница пришла; текст страницы лежит в r.text";
+        $("httpInfo").className = "verdict good";
+      }
+    });
+    $("httpRun").onclick = function () { start = performance.now(); $("httpInfo").textContent = "запрос ушёл…"; $("httpInfo").className = "verdict"; };
+  })();
+
+  /* ---------- 06 разбор requests.get ---------- */
+  anat("getAnat", "getNote", [
+    ["r = ", null],
+    ["requests.get(", "<b>Функция библиотеки</b>. <code>get</code> — это способ запроса «дай страницу», такой же, как когда вы вводите адрес в браузере. Есть и другие: <code>post</code> — отправить данные формы, но сегодня они нам не нужны."],
+    ["\n    url", "<b>Куда идём.</b> Строка с полным адресом, обязательно с <code>http://</code> или <code>https://</code>. Обычно заводят отдельную переменную: <code>url = \"http://quotes.toscrape.com/\"</code>. Это единственный обязательный аргумент."],
+    [",\n    headers=headers", "<b>Как представляемся.</b> Словарь заголовков. Самый важный — <code>User-Agent</code>: по нему сайт понимает, кто пришёл. Без него часть сайтов отвечает отказом 403."],
+    [",\n    params={\"page\": 2}", "<b>Параметры адреса.</b> Словарь превратится в <code>?page=2</code> в конце адреса. Библиотека сама поставит <code>?</code> и <code>&amp;</code> и закодирует пробелы и кириллицу. Нужен, когда страницы задаются номером."],
+    [",\n    timeout=10", "<b>Сколько ждать ответ</b>, в секундах. Не ответили за 10 — получим ошибку и пойдём дальше. Без этого аргумента зависший сайт остановит весь парсер навсегда."],
+    ["\n)", null]
+  ]);
+
+  /* ---------- 07 свойства ответа ---------- */
+  (function () {
+    var R = [
+      ["r.status_code", "print(r.status_code)\n200", "<b>Код ответа — число.</b> 200 значит «всё хорошо». Это первое, что стоит напечатать: если тут 403 или 404, разбирать страницу бессмысленно."],
+      ["r.text", "print(len(r.text))\n11021\nprint(r.text[:60])\n<!DOCTYPE html>\\n<html lang=\"en\">", "<b>Тело ответа строкой</b> — тот самый HTML. С ним дальше будет работать BeautifulSoup. Для картинок и файлов вместо <code>text</code> берут <code>r.content</code> — те же данные, но байтами."],
+      ["r.ok", "print(r.ok)\nTrue", "<b>Короткая проверка.</b> True, если код меньше 400. Удобно писать <code>if r.ok:</code> вместо сравнения с 200."],
+      ["r.json()", "data = r.json()\nprint(data[\"total\"])\n194", "<b>Только для ответов-JSON.</b> Превращает текст ответа в словарь Python. Если сервер прислал HTML, будет ошибка — значит, нужен BeautifulSoup, а не json."],
+      ["r.encoding", "print(r.encoding)\nutf-8", "<b>Кодировка ответа.</b> Если в тексте вместо символов кракозябры вроде <code>Â£</code>, присвойте правильную: <code>r.encoding = \"utf-8\"</code> — и берите <code>r.text</code> заново."],
+      ["r.url", "print(r.url)\nhttps://httpbin.org/get?page=2", "<b>Итоговый адрес</b> — с подставленными параметрами и после всех перенаправлений. Полезно для проверки, что <code>params</code> собрались правильно."]
+    ], sel = 0;
+    function draw() { $("rOut").textContent = R[sel][1]; $("rNote").innerHTML = '<span class="lbl">' + R[sel][0] + "</span>" + R[sel][2]; }
+    R.forEach(function (r, i) { var b = document.createElement("button"); b.textContent = r[0]; b.style.fontFamily = "var(--mono)"; b.style.fontSize = "12.5px"; if (!i) b.className = "on"; b.onclick = function () { sel = i; Array.prototype.forEach.call($("rBtns").children, function (x) { x.classList.toggle("on", x === b); }); draw(); }; $("rBtns").appendChild(b); });
+    draw();
+  })();
+
+  /* ---------- 09 проверка кода ответа ---------- */
+  lines("chkLines", "chkNote", [
+    ["r = requests.get(url, headers=headers, timeout=10)", "Отправили запрос. В <code>r</code> теперь лежит ответ сервера — даже если он плохой."],
+    ["", null],
+    ["if r.status_code == 200:", "Сравниваем код ответа с 200. Два знака равенства — это <b>сравнение</b>, а не присваивание."],
+    ["    print(\"страница получена\", len(r.text))", "Ветка успеха. Печатаем длину текста, чтобы сразу видеть: страница не пустая."],
+    ["else:", "Любой другой код — сюда."],
+    ["    print(\"ошибка, код:\", r.status_code)", "Печатаем сам код: по нему понятно, что чинить — адрес, заголовки или темп запросов."],
+    ["", null],
+    ["r.raise_for_status()", "Второй способ: эта строка сама бросит ошибку при плохом коде. Удобно, когда продолжать работу без страницы бессмысленно."]
+  ]);
+
+  /* ---------- 14 что делает BeautifulSoup ---------- */
+  (function () {
+    var c = cv("bsCv"), start = null;
+    var RAW = ['<div class="quote">', '  <span class="text">“The world...”</span>', '  <small class="author">Albert Einstein</small>', '  <div class="tags"><a class="tag">change</a></div>', '</div>'];
+    var N = [
+      { x: 430, y: 40, w: 150, h: 32, t: "div.quote", col: C.amber, from: 0 },
+      { x: 330, y: 120, w: 130, h: 32, t: "span.text", col: C.teal, from: 1 },
+      { x: 480, y: 120, w: 150, h: 32, t: "small.author", col: C.teal, from: 2 },
+      { x: 500, y: 200, w: 120, h: 32, t: "div.tags", col: C.violet, from: 3 },
+      { x: 520, y: 262, w: 100, h: 30, t: "a.tag", col: C.violet, from: 3 }
+    ], E = [[0, 1], [0, 2], [0, 3], [3, 4]];
+    loop($("q14"), function (ts) {
+      var t = start === null ? -1 : (ts - start) / 1000;
+      c.clearRect(0, 0, 700, 340);
+      c.fillStyle = C.faint; c.font = font(12); c.textAlign = "left";
+      c.fillText("строка, которую прислал сервер", 14, 24);
+      RAW.forEach(function (l, i) {
+        var gone = t > .4 + i * .25;
+        c.fillStyle = gone ? "rgba(157,175,194,.25)" : "#bcd3cb"; c.font = font(11.5);
+        c.fillText(l.length > 40 ? l.slice(0, 40) : l, 14, 52 + i * 22);
+      });
+      if (t > 0) {
+        E.forEach(function (e) { var a = N[e[0]], b = N[e[1]]; if (t > 1.6) arrow(c, a.x + a.w / 2, a.y + a.h, b.x + b.w / 2, b.y - 2, "rgba(157,175,194,.35)"); });
+        N.forEach(function (n, i) {
+          var p = Math.max(0, Math.min(1, (t - .4 - n.from * .25) * 1.6));
+          if (p <= 0) return;
+          var x = lerp(20, n.x, p), y = lerp(52 + n.from * 22, n.y, p);
+          node(c, x, y, n.w, n.h, n.t, "rgba(224,145,63,.18)", n.col, C.text, 12.5);
+        });
+      }
+      if (t > 2.6) {
+        c.fillStyle = C.amberHi; c.font = font(13); c.textAlign = "left";
+        c.fillText("soup.find(\"small\", class_=\"author\").text", 14, 250);
+        c.fillStyle = C.teal; c.fillText("→ Albert Einstein", 14, 274);
+        var n2 = N[2]; c.strokeStyle = C.amberHi; c.lineWidth = 2.5; c.strokeRect(n2.x - 3, n2.y - 3, n2.w + 6, n2.h + 6); c.lineWidth = 1;
+        arrow(c, 250, 268, n2.x - 8, n2.y + 20, C.amberHi);
+        $("bsInfo").textContent = "теперь у нас не строка, а дерево: можно попросить нужный тег";
+        $("bsInfo").className = "verdict good";
+      }
+      c.fillStyle = C.faint; c.font = font(12); c.textAlign = "left";
+      if (t > 1.2) c.fillText("дерево тегов: у каждого есть имя, класс, текст и дети", 330, 24);
+    });
+    $("bsRun").onclick = function () { start = performance.now(); $("bsInfo").textContent = "разбираем строку…"; $("bsInfo").className = "verdict"; };
+  })();
+
+  /* ---------- 16 разбор find ---------- */
+  anat("findAnat", "findNote", [
+    ["first = ", null],
+    ["soup.find(", "<b>Ищет первый подходящий тег</b> во всём дереве, сверху вниз. Вернёт объект тега или <code>None</code>, если ничего не нашлось. Вызывается у <code>soup</code> или у любого найденного тега — тогда поиск идёт только внутри него."],
+    ["\"div\"", "<b>Имя тега.</b> Первый аргумент. Можно написать <code>\"a\"</code>, <code>\"span\"</code>, <code>\"small\"</code>. Если имя не важно, ставят <code>None</code> или просто не указывают и ищут по классу."],
+    [", class_=\"quote\"", "<b>Класс тега.</b> Подчёркивание на конце — потому что слово <code>class</code> занято самим Python. Искать можно по любому атрибуту: <code>id=\"main\"</code>, <code>href=\"/page/2/\"</code>."],
+    [")\n\n", null],
+    ["all_q = soup.find_all(", "<b>То же самое, но возвращает список</b> всех подходящих тегов. Если ничего не нашлось — пустой список, а не None."],
+    ["\"div\", class_=\"quote\"", "Аргументы такие же, как у <code>find</code>."],
+    [", limit=3", "<b>Сколько максимум вернуть.</b> Необязательный аргумент: удобно, когда нужно быстро посмотреть первые несколько элементов."],
+    [")", null]
+  ]);
+
+  /* ---------- 17 .text и .get ---------- */
+  (function () {
+    var c = cv("tagCv"), sel = 0;
+    var N = [
+      { x: 210, y: 20, w: 170, h: 34, t: "div.quote", col: C.amber, text: "“The world...” Albert Einstein change", get: "None", note: "текст всех детей вместе" },
+      { x: 30, y: 110, w: 160, h: 34, t: "span.text", col: C.teal, text: "“The world as we...”", get: "None", note: "у span нет href" },
+      { x: 210, y: 110, w: 170, h: 34, t: "small.author", col: C.teal, text: "Albert Einstein", get: "None", note: "имя автора" },
+      { x: 400, y: 110, w: 150, h: 34, t: "div.tags", col: C.violet, text: "change", get: "None", note: "внутри только один тег-ссылка" },
+      { x: 400, y: 200, w: 150, h: 34, t: "a.tag", col: C.violet, text: "change", get: "/tag/change/page/1/", note: "у ссылки есть атрибут href" }
+    ], E = [[0, 1], [0, 2], [0, 3], [3, 4]];
+    function draw() {
+      c.clearRect(0, 0, 600, 300);
+      E.forEach(function (e) { var a = N[e[0]], b = N[e[1]]; arrow(c, a.x + a.w / 2, a.y + a.h, b.x + b.w / 2, b.y - 2, "rgba(157,175,194,.35)"); });
+      N.forEach(function (n, i) { node(c, n.x, n.y, n.w, n.h, n.t, i === sel ? "rgba(224,145,63,.3)" : "#1f2e3f", i === sel ? C.amberHi : n.col, C.text, 13); });
+      cap(c, "нажмите на любой тег", 300, 280, C.faint, 12);
+      var n = N[sel];
+      $("tagOut").textContent = "tag = " + n.t.replace(".", " class=\"") + "\"\n\n"
+        + "tag.text\n  " + n.text + "\n\n"
+        + "tag.get(\"href\")\n  " + n.get + "      # " + n.note;
+    }
+    $("tagCv").onclick = function (e) {
+      var p = evPos(e, this);
+      N.forEach(function (n, i) { if (p.x > n.x && p.x < n.x + n.w && p.y > n.y && p.y < n.y + n.h) { sel = i; draw(); } });
+    };
+    draw();
+  })();
+
+  /* ---------- 19 тренажёр селекторов ---------- */
+  (function () {
+    var LINES = [
+      '<div class="quote">',
+      '  <span class="text">“The world as we...”</span>',
+      '  <small class="author">Albert Einstein</small>',
+      '  <div class="tags">',
+      '    <a class="tag" href="/tag/change/">change</a>',
+      '    <a class="tag" href="/tag/world/">world</a>',
+      '  </div>',
+      '</div>',
+      '<div class="quote">',
+      '  <span class="text">“It is our choices...”</span>',
+      '  <small class="author">J.K. Rowling</small>',
+      '  <div class="tags">',
+      '    <a class="tag" href="/tag/choices/">choices</a>',
+      '  </div>',
+      '</div>',
+      '<ul class="pager">',
+      '  <li class="next"><a href="/page/2/">Next</a></li>',
+      '</ul>'
+    ];
+    var HTML = '<div class="quote" data-ln="0"><span class="text" data-ln="1">a</span>'
+      + '<small class="author" data-ln="2">Albert Einstein</small>'
+      + '<div class="tags" data-ln="3"><a class="tag" href="/tag/change/" data-ln="4">change</a>'
+      + '<a class="tag" href="/tag/world/" data-ln="5">world</a></div></div>'
+      + '<div class="quote" data-ln="8"><span class="text" data-ln="9">b</span>'
+      + '<small class="author" data-ln="10">J.K. Rowling</small>'
+      + '<div class="tags" data-ln="11"><a class="tag" href="/tag/choices/" data-ln="12">choices</a></div></div>'
+      + '<ul class="pager" data-ln="15"><li class="next" data-ln="16"><a href="/page/2/" data-ln="16">Next</a></li></ul>';
+    var doc = new DOMParser().parseFromString("<body>" + HTML + "</body>", "text/html");
+    function run() {
+      var sel = $("selIn").value.trim(), hits = [], err = null;
+      if (sel) { try { hits = Array.prototype.map.call(doc.querySelectorAll(sel), function (e) { return Number(e.dataset.ln); }); } catch (e) { err = "непонятный селектор"; } }
+      $("selBox").innerHTML = LINES.map(function (l, i) { return hits.indexOf(i) >= 0 ? '<span class="hit">' + esc(l) + "</span>" : esc(l); }).join("\n");
+      $("selV").textContent = err ? err : (sel ? "найдено элементов: " + hits.length : "впишите селектор");
+      $("selV").className = "verdict " + (err ? "bad" : hits.length ? "good" : "");
+    }
+    $("selIn").oninput = run;
+    [".quote", ".quote .text", ".author", "a.tag", "li.next a", "div > span", "a[href]"].forEach(function (s) {
+      var b = document.createElement("button"); b.textContent = s; b.style.fontFamily = "var(--mono)"; b.style.fontSize = "12px";
+      b.onclick = function () { $("selIn").value = s; run(); };
+      $("selEx").appendChild(b);
+    });
+    run();
+  })();
+
+  /* ---------- 21 цикл по страницам ---------- */
+  (function () {
+    var ROWS = [
+      ["url = \"/page/1/\"", "Начинаем с первой страницы. В переменной <code>url</code> всегда лежит адрес <b>следующей</b> страницы, которую надо забрать."],
+      ["all_quotes = []", "Пустой список, куда будем складывать все цитаты со всех страниц."],
+      ["", null],
+      ["while url:", "Цикл работает, пока в <code>url</code> что-то есть. Как только там окажется <code>None</code> — цикл закончится сам."],
+      ["    html = get_html(base + url)", "Наша функция с шага 3: забирает страницу и проверяет код ответа."],
+      ["    soup = BeautifulSoup(html, \"lxml\")", "Строим дерево, чтобы искать по нему."],
+      ["    all_quotes += parse_page(html)", "Функция с шага 6 возвращает 10 словарей, они добавляются в общий список."],
+      ["    nxt = soup.select_one(\"li.next a\")", "Ищем кнопку «Next». На последней странице её нет — вернётся <code>None</code>."],
+      ["    url = nxt.get(\"href\") if nxt else None", "Если кнопка есть — берём её адрес, если нет — кладём <code>None</code> и на следующем витке цикл остановится."],
+      ["    time.sleep(0.3)", "Пауза, чтобы не долбить сайт запросами без остановки."]
+    ];
+    var st = { page: 0, url: "/page/1/", total: 0, nxt: "—" };
+    function vars() {
+      $("pgVars").innerHTML = "<dt>url</dt><dd>" + esc(String(st.url)) + "</dt>"
+        + "<dt>len(all_quotes)</dt><dd>" + st.total + "</dd>"
+        + "<dt>nxt</dt><dd>" + esc(String(st.nxt)) + "</dd>"
+        + "<dt>виток цикла</dt><dd>" + st.page + "</dd>";
+    }
+    var ORDER = [0, 1, 3, 4, 5, 6, 7, 8, 9], pos = 0;
+    var ctl = lines("pgLines", "pgNote", ROWS, function (i) {
+      if (i === 3) { st.page += 1; }
+      if (i === 6) { st.total = Math.min(100, st.page * 10); }
+      if (i === 7) { st.nxt = st.page < 10 ? 'ссылка на /page/' + (st.page + 1) + '/' : "None"; }
+      if (i === 8) { st.url = st.page < 10 ? "/page/" + (st.page + 1) + "/" : "None"; }
+      vars();
+    });
+    vars();
+    $("pgStep").onclick = function () {
+      if (st.url === "None") return;
+      pos = pos + 1 >= ORDER.length ? 2 : pos + 1;   // после последней строки — снова while
+      ctl.sel(ORDER[pos]);
+    };
+    $("pgReset").onclick = function () { st = { page: 0, url: "/page/1/", total: 0, nxt: "—" }; pos = 0; ctl.sel(0); vars(); };
+  })();
+
+  /* ---------- 23 разбор pandas ---------- */
+  anat("pdAnat", "pdNote", [
+    ["df = ", null],
+    ["pd.DataFrame(", "<b>Создаёт таблицу.</b> Понимает список словарей: каждый словарь станет строкой, а ключи — названиями колонок. Именно поэтому мы весь урок собирали данные словарями."],
+    ["all_quotes", "<b>Наши данные.</b> Список из 100 словарей с ключами <code>text</code>, <code>author</code>, <code>tags</code>."],
+    [")\n\n", null],
+    ["df.to_csv(", "<b>Записывает таблицу в файл.</b> Есть и <code>to_excel</code>, но для него нужен пакет <code>openpyxl</code>."],
+    ["\"quotes.csv\"", "<b>Имя файла.</b> Появится рядом с ноутбуком; в Colab — в панели «Файлы» слева, оттуда можно скачать."],
+    [", index=False", "<b>Не писать номера строк.</b> Иначе в файле появится лишний первый столбец 0, 1, 2…"],
+    [", encoding=\"utf-8-sig\"", "<b>Кодировка.</b> Именно этот вариант заставляет Excel правильно показать русский текст. Без него вместо букв будут кракозябры."],
+    [")", null]
+  ]);
+
+  /* ---------- 25 скрипт целиком ---------- */
+  (function () {
+    var CODE = [
+      ["import time", 1], ["import requests", 1], ["from bs4 import BeautifulSoup", 4], ["import pandas as pd", 8],
+      ["from urllib.parse import urljoin", 7], ["", 0],
+      ["BASE = \"http://quotes.toscrape.com\"", 1],
+      ["HEADERS = {\"User-Agent\": \"IThub-student-bot/1.0\"}", 3], ["", 0],
+      ["def get_html(url):", 3],
+      ["    try:", 3],
+      ["        r = requests.get(url, headers=HEADERS,", 3],
+      ["                         timeout=10)", 3],
+      ["    except requests.RequestException as e:", 3],
+      ["        print(\"ошибка сети:\", e)", 3],
+      ["        return None", 3],
+      ["    if r.status_code != 200:", 2],
+      ["        print(\"плохой ответ:\", r.status_code)", 2],
+      ["        return None", 2],
+      ["    return r.text", 3], ["", 0],
+      ["def parse_page(html):", 6],
+      ["    soup = BeautifulSoup(html, \"lxml\")", 4],
+      ["    rows = []", 6],
+      ["    for card in soup.select(\".quote\"):", 6],
+      ["        rows.append({", 6],
+      ["            \"text\": card.select_one(\".text\").text,", 5],
+      ["            \"author\": card.select_one(\".author\").text,", 5],
+      ["            \"tags\": [t.text for t in card.select(\".tag\")],", 5],
+      ["        })", 6],
+      ["    return rows", 6], ["", 0],
+      ["url, all_quotes = \"/page/1/\", []", 7],
+      ["while url:", 7],
+      ["    html = get_html(urljoin(BASE, url))", 7],
+      ["    if html is None:", 7],
+      ["        break", 7],
+      ["    all_quotes += parse_page(html)", 7],
+      ["    soup = BeautifulSoup(html, \"lxml\")", 7],
+      ["    nxt = soup.select_one(\"li.next a\")", 7],
+      ["    url = nxt.get(\"href\") if nxt else None", 7],
+      ["    print(\"собрано:\", len(all_quotes),", 7],
+      ["          \"дальше:\", url)", 7],
+      ["    time.sleep(0.3)", 7], ["", 0],
+      ["df = pd.DataFrame(all_quotes)", 8],
+      ["df.to_csv(\"quotes.csv\", index=False,", 8],
+      ["          encoding=\"utf-8-sig\")", 8],
+      ["print(df.shape)", 8],
+      ["print(df[\"author\"].value_counts().head())", 8]
+    ];
+    var NOTES = {
+      1: "<b>Шаг 1.</b> Импорты и адрес сайта. С этого начинается любой парсер.",
+      2: "<b>Шаг 2.</b> Проверка кода ответа: если не 200 — возвращаем None и дальше не идём.",
+      3: "<b>Шаг 3.</b> Функция get_html: заголовки, timeout и перехват ошибок сети.",
+      4: "<b>Шаг 4.</b> BeautifulSoup строит дерево из строки HTML.",
+      5: "<b>Шаг 5.</b> Достаём из карточки текст, автора и теги.",
+      6: "<b>Шаг 6.</b> parse_page собирает все карточки страницы в список словарей.",
+      7: "<b>Шаг 7.</b> Цикл по страницам: адрес следующей берём из кнопки Next, между запросами пауза.",
+      8: "<b>Шаг 8.</b> pandas собирает таблицу, сохраняет CSV и считает статистику."
+    }, sel = 0;
+    var SPLIT = 27;
+    function render(box, from, to) {
+      $(box).innerHTML = CODE.slice(from, to).map(function (l) {
+        var txt = esc(l[0] || " ");
+        return sel && l[1] === sel ? '<span class="mark">' + txt + "</span>" : "<span>" + txt + "</span>";
+      }).join("\n");
+    }
+    function draw() {
+      render("fullCodeA", 0, SPLIT);
+      render("fullCodeB", SPLIT, CODE.length);
+      $("fullNote").innerHTML = sel ? NOTES[sel] : "Нажмите номер шага — подсвечу строки, которые вы написали на этом шаге.";
+    }
+    for (var i = 1; i <= 8; i++) (function (n) {
+      var b = document.createElement("button"); b.textContent = "шаг " + n;
+      b.onclick = function () { sel = n; Array.prototype.forEach.call($("fullBtns").children, function (x) { x.classList.toggle("on", x === b); }); draw(); };
+      $("fullBtns").appendChild(b);
+    })(i);
+    draw();
+  })();
+
+  /* ---------- 29 чеклист ---------- */
+  (function () {
+    var boxes = Array.prototype.slice.call(document.querySelectorAll("#q29 .chk input"));
+    function upd() {
+      var n = boxes.filter(function (b) { return b.checked; }).length;
+      $("ckV").textContent = n === boxes.length ? "Всё готово — можно сдавать." : "отмечено " + n + " из " + boxes.length;
+      $("ckV").className = "verdict " + (n === boxes.length ? "good" : "");
+    }
+    boxes.forEach(function (b) { b.onchange = upd; }); upd();
+  })();
+
+  /* ---------- 30 проверка себя ---------- */
+  quiz({ box: "fq", verdict: "fqV", check: "fqCheck", reset: "fqReset", items: [
+    { t: "Что лежит в r.text?", o: ["сырой HTML строкой", "готовая таблица", "код ответа"], a: 0, w: "обычная строка с кодом страницы" },
+    { t: "pip install ___ для BeautifulSoup", o: ["bs4", "beautifulsoup4", "beautiful-soup"], a: 1, w: "ставим beautifulsoup4, импортируем from bs4" },
+    { t: "Зачем timeout=10", o: ["ждать ответ не дольше 10 секунд", "10 попыток", "пауза 10 секунд"], a: 0, w: "иначе скрипт может зависнуть навсегда" },
+    { t: "find ничего не нашёл — что вернётся", o: ["None", "пустая строка", "ошибка"], a: 0, w: "а find_all вернёт пустой список" },
+    { t: "Почему class_ с подчёркиванием", o: ["class занято в Python", "так короче", "это опечатка"], a: 0, w: "class — ключевое слово языка" },
+    { t: "Что делает .get(\"href\")", o: ["берёт значение атрибута", "делает запрос", "берёт текст тега"], a: 0, w: "для текста есть .text" },
+    { t: "Как цикл по страницам понимает, что пора остановиться", o: ["кнопки Next нет, url = None", "считает до 10", "ловит ошибку"], a: 0, w: "select_one вернёт None" },
+    { t: "index=False в to_csv", o: ["не писать лишний столбец с номерами", "не сохранять заголовки", "перезаписать файл"], a: 0, w: "иначе в файле появится столбец 0, 1, 2…" }
+  ]});
+
+  var h = (location.hash || "").match(/^#s(\d+)$/);
+  show(h ? Number(h[1]) - 1 : 0);
+})();
+</script>
+</body>
+</html>
